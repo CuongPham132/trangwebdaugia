@@ -1,0 +1,69 @@
+# =========================
+# Common .gitignore (backend + frontend)
+# =========================
+
+# Dependencies
+backend/node_modules/
+frontend/my-app/node_modules/
+
+# Build outputs
+backend/dist/
+backend/build/
+frontend/my-app/dist/
+frontend/my-app/dist-ssr/
+
+# Coverage and test outputs
+frontend/my-app/coverage/
+frontend/my-app/.nyc_output/
+
+# Logs
+backend/logs/
+frontend/my-app/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment files
+backend/.env
+backend/.env.local
+backend/.env.*.local
+backend/.env.development.local
+backend/.env.test.local
+backend/.env.production.local
+frontend/my-app/.env
+frontend/my-app/.env.*
+frontend/my-app/*.local
+!frontend/my-app/.env.example
+
+# Editor/IDE files
+.vscode/
+frontend/my-app/.vscode/*
+!frontend/my-app/.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*.sw?
+*~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+backend/tmp/
+backend/temp/
+
+# Backend uploads (keep placeholder)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Optional lockfiles (kept from backend rules)
+backend/package-lock.json
+backend/yarn.lock

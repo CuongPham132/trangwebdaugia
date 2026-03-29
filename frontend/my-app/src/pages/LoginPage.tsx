@@ -1,0 +1,196 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { Form, Input, Button, Card, Space, Divider, Row, Col, Alert } from 'antd';
+import { MailOutlined, LockOutlined } from '@ant-design/icons';
+import { Layout } from '../layout';
+import { userAPI } from '../services/api';
+
+export const LoginPage: React.FC = () => {
+  const [form] = Form.useForm<{ email: string; password: string }>();
+  const [loading, setLoading] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string>('');
+
+  const handleSubmit = async (values: { email: string; password: string }) => {
+    setSubmitError('');
+    setLoading(true);
+    try {
+      // Call API to login
+      const response = await userAPI.login(values);
+      
+      // Success: save token and redirect to marketplace
+      if (response.data && response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        // Save user info if needed
+        if (response.data.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
+        // Reload page to update Header state, then navigate
+        setTimeout(() => {
+          window.location.href = '/marketplace';
+        }, 800);
+      }
+    } catch (error) {
+      // Error: show message but DON'T redirect
+      setSubmitError('Tài khoản hoặc mật khẩu sai');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Layout>
+      <div style={{ minHeight: 'calc(100vh - 200px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px' }}>
+        <motion.div
+          style={{ width: '100%', maxWidth: '420px' }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card
+            style={{
+              borderRadius: '16px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            {/* Header */}
+            <motion.div
+              style={{ textAlign: 'center', marginBottom: '32px' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+            >
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔥</div>
+              <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#262626', margin: '0 0 8px 0' }}>Đăng Nhập</h1>
+              <p style={{ color: '#666', margin: '8px 0 0 0' }}>Chào mừng quay lại AuctionHub</p>
+            </motion.div>
+
+            {/* Error Alert */}
+            {submitError && (
+              <Alert
+                message={submitError}
+                type="error"
+                showIcon
+                style={{ marginBottom: '16px' }}
+              />
+            )}
+
+            {/* Form */}
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSubmit}
+              size="large"
+              requiredMark={false}
+            >
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                <Form.Item
+                  label="📧 Email"
+                  name="email"
+                  rules={[
+                    { required: true, message: 'Email không được để trống' },
+                    { type: 'email', message: 'Email không hợp lệ' },
+                  ]}
+                >
+                  <Input
+                    placeholder="you@example.com"
+                    prefix={<MailOutlined />}
+                  />
+                </Form.Item>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
+                <Form.Item
+                  label="🔒 Mật khẩu"
+                  name="password"
+                  rules={[
+                    { required: true, message: 'Mật khẩu không được để trống' },
+                    { min: 6, message: 'Mật khẩu phải ít nhất 6 ký tự' },
+                  ]}
+                >
+                  <Input.Password
+                    placeholder="••••••••"
+                    prefix={<LockOutlined />}
+                  />
+                </Form.Item>
+              </motion.div>
+
+              {/* Login Button */}
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  loading={loading}
+                  size="large"
+                  style={{
+                    background: 'linear-gradient(135deg, #ff7a45 0%, #d9534f 100%)',
+                    borderColor: 'transparent',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  {loading ? '⏳ Đang xử lý...' : '🚀 Đăng Nhập'}
+                </Button>
+              </motion.div>
+            </Form>
+
+            {/* Divider */}
+            <Divider style={{ margin: '24px 0' }}>hoặc</Divider>
+
+            {/* Social Login */}
+            <Row gutter={12}>
+              <Col span={12}>
+                <motion.div whileHover={{ scale: 1.05 }}>
+                  <Button
+                    block
+                    size="large"
+                    style={{
+                      borderColor: '#d9d9d9',
+                    }}
+                  >
+                    Google
+                  </Button>
+                </motion.div>
+              </Col>
+              <Col span={12}>
+                <motion.div whileHover={{ scale: 1.05 }}>
+                  <Button
+                    block
+                    size="large"
+                    style={{
+                      borderColor: '#d9d9d9',
+                    }}
+                  >
+                    Facebook
+                  </Button>
+                </motion.div>
+              </Col>
+            </Row>
+
+            {/* Footer Links */}
+            <motion.div
+              style={{ marginTop: '24px', textAlign: 'center' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <div>
+                  <Link to="/forgot-password" style={{ color: '#ff7a45', fontWeight: 'bold', textDecoration: 'none' }}>
+                    Quên mật khẩu?
+                  </Link>
+                </div>
+                <div style={{ color: '#262626' }}>
+                  Chưa có tài khoản?{' '}
+                  <Link to="/register" style={{ color: '#ff7a45', fontWeight: 'bold', textDecoration: 'none' }}>
+                    Đăng ký ngay
+                  </Link>
+                </div>
+              </Space>
+            </motion.div>
+          </Card>
+        </motion.div>
+      </div>
+    </Layout>
+  );
+};

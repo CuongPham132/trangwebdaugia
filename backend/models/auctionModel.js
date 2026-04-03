@@ -113,6 +113,8 @@ async function getProductTimeInfo(product_id) {
       start_time,
       end_time,
       status,
+      extension_count,
+      max_extensions,
       DATEDIFF(SECOND, GETDATE(), end_time) as seconds_remaining,
       CASE
         WHEN GETDATE() < start_time THEN 'chưa_bắt_đầu'
@@ -125,10 +127,74 @@ async function getProductTimeInfo(product_id) {
   return result.recordset[0];
 }
 
+// ⭐ IMPROVED: Tự động kéo dài thời gian đấu giá nếu có bid trong 10 giây cuối
+// Thay vì giới hạn số lần, giới hạn TỔNG THỜI GIAN kéo dài
+async function extendAuctionTime(product_id) {
+  try {
+    // Lấy thông tin sản phẩm hiện tại
+    const timeInfo = await getProductTimeInfo(product_id);
+    
+    if (!timeInfo) {
+      return { extended: false, message: 'Sản phẩm không tồn tại' };
+    }
+
+    const secondsRemaining = timeInfo.seconds_remaining;
+    const extensionCount = timeInfo.extension_count;
+    const maxExtensions = timeInfo.max_extensions;
+    
+    // ⭐ LIMIT: Tổng thời gian extension tối đa (600s = 10 phút)
+    const MAX_TOTAL_EXTENSION_SECONDS = 600;
+    const totalExtendedSeconds = extensionCount * 30; // Mỗi lần +30s
+    
+    // Kiểm tra điều kiện: nếu còn < 10 giây
+    if (secondsRemaining < 10) {
+      // Nếu chưa tới giới hạn tổng thời gian
+      if (totalExtendedSeconds < MAX_TOTAL_EXTENSION_SECONDS) {
+        // ⭐ TÌM HiỆU: Kéo dài thêm 30 giây
+        const result = await sql.query`
+          UPDATE product
+          SET 
+            end_time = DATEADD(SECOND, 30, end_time),
+            extension_count = extension_count + 1
+          WHERE product_id = ${product_id}
+        `;
+
+        return {
+          extended: true,
+          extension_count: extensionCount + 1,
+          message: `Đấu giá được kéo dài thêm 30 giây (lần ${extensionCount + 1})`,
+          total_extended_time: `${(totalExtendedSeconds + 30) / 60} phút`,
+          total_extended_seconds: totalExtendedSeconds + 30,
+        };
+      } else {
+        // ⭐ Đã tới giới hạn tổng thời gian
+        return {
+          extended: false,
+          reason: 'EXTENSION_TIME_LIMIT_REACHED',
+          message: `Không thể kéo dài nữa. Đã kéo dài tổng cộng ${totalExtendedSeconds / 60} phút`,
+          total_extended_seconds: totalExtendedSeconds,
+          max_total: MAX_TOTAL_EXTENSION_SECONDS,
+        };
+      }
+    } else {
+      // Còn >= 10 giây, không cần kéo dài
+      return {
+        extended: false,
+        reason: 'STILL_TIME_REMAINING',
+        message: `Không cần kéo dài. Còn ${secondsRemaining}s`,
+        seconds_remaining: secondsRemaining,
+      };
+    }
+  } catch (err) {
+    throw err;
+  }
+}
+
 module.exports = {
   checkAndUpdateProductStatus,
   getEndedProducts,
   determineWinner,
   autoCompleteAuctions,
   getProductTimeInfo,
+  extendAuctionTime,
 };

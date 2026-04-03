@@ -61,8 +61,8 @@ async function getSellerProducts(seller_id) {
 // Tạo sản phẩm mới
 async function createProduct({ title, description, start_price, min_increment, start_time, end_time, seller_id, category_id }) {
   const result = await sql.query`
-    INSERT INTO product (title, description, start_price, current_price, min_increment, start_time, end_time, seller_id, category_id, status)
-    VALUES (${title}, ${description}, ${start_price}, ${start_price}, ${min_increment}, ${start_time}, ${end_time}, ${seller_id}, ${category_id}, 'upcoming');
+    INSERT INTO product (title, description, start_price, current_price, min_increment, start_time, end_time, original_end_time, extension_count, max_extensions, seller_id, category_id, status)
+    VALUES (${title}, ${description}, ${start_price}, ${start_price}, ${min_increment}, ${start_time}, ${end_time}, ${end_time}, 0, 3, ${seller_id}, ${category_id}, 'upcoming');
     SELECT SCOPE_IDENTITY() as product_id
   `;
   return result.recordset[0].product_id;

@@ -1,6 +1,7 @@
 const { addProductImage, setPrimaryImage, deleteProductImage, getImagesByProductId } = require('../models/productImageModel');
 const { getProductById } = require('../models/productModel');
 const logger = require('../services/logger');
+const { ERROR_CODES, createSuccessResponse, createErrorResponse } = require('../utils/errorHandler');
 
 function toAbsoluteImageUrl(req, imageUrl) {
   if (!imageUrl) return imageUrl;
@@ -17,30 +18,31 @@ async function uploadProductImage(req, res) {
 
     // Validate
     if (!product_id) {
-      return res.status(400).json({ message: 'Vui lòng nhập product_id' });
+      return res.status(400).json(
+        createErrorResponse('Vui lòng nhập product_id', ERROR_CODES.INVALID_INPUT, 400)
+      );
     }
 
     // Kiểm tra file có được upload không
     if (!uploadedFile) {
-      return res.status(400).json({ message: 'Vui lòng chọn hình ảnh (field: image hoặc file)' });
+      return res.status(400).json(
+        createErrorResponse('Vui lòng chọn hình ảnh (field: image hoặc file)', ERROR_CODES.INVALID_INPUT, 400)
+      );
     }
 
     // Kiểm tra sản phẩm tồn tại
     const product = await getProductById(product_id);
     if (!product) {
-      return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
+      return res.status(404).json(
+        createErrorResponse('Sản phẩm không tồn tại', ERROR_CODES.PRODUCT_NOT_FOUND, 404)
+      );
     }
 
     // Kiểm tra quyền (chủ sản phẩm hoặc admin)
     if (String(seller_id) !== String(product.seller_id) && req.user.role !== 'admin') {
-      return res.status(403).json({ 
-        message: 'Bạn không có quyền upload hình ảnh cho sản phẩm này',
-        debug: {
-          your_user_id: seller_id,
-          product_owner_id: product.seller_id,
-          product_id: product_id
-        }
-      });
+      return res.status(403).json(
+        createErrorResponse('Bạn không có quyền upload hình ảnh cho sản phẩm này', ERROR_CODES.PERMISSION_DENIED, 403)
+      );
     }
 
     // Tạo URL cho hình ảnh
@@ -51,13 +53,14 @@ async function uploadProductImage(req, res) {
 
     logger.success('Product image uploaded', { product_id, user_id: seller_id, is_primary: primaryFlag });
 
-    res.status(201).json({
-      message: 'Upload hình ảnh thành công',
-      data: { image_url: toAbsoluteImageUrl(req, image_url) },
-    });
+    res.status(201).json(
+      createSuccessResponse({ image_url: toAbsoluteImageUrl(req, image_url) }, 'Upload hình ảnh thành công')
+    );
   } catch (err) {
     logger.error('Upload product image failed', { error: err.message });
-    res.status(500).json({ error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi upload hình ảnh', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 
@@ -70,22 +73,30 @@ async function setMainImage(req, res) {
     // Kiểm tra sản phẩm tồn tại
     const product = await getProductById(product_id);
     if (!product) {
-      return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
+      return res.status(404).json(
+        createErrorResponse('Sản phẩm không tồn tại', ERROR_CODES.PRODUCT_NOT_FOUND, 404)
+      );
     }
 
     // Kiểm tra quyền
     if (String(product.seller_id) !== String(seller_id) && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Bạn không có quyền cập nhật hình ảnh cho sản phẩm này' });
+      return res.status(403).json(
+        createErrorResponse('Bạn không có quyền cập nhật hình ảnh cho sản phẩm này', ERROR_CODES.PERMISSION_DENIED, 403)
+      );
     }
 
     await setPrimaryImage(image_id, product_id);
 
     logger.success('Product main image set', { image_id, product_id, user_id: seller_id });
 
-    res.json({ message: 'Đặt hình ảnh chính thành công' });
+    res.json(
+      createSuccessResponse({ image_id, product_id }, 'Đặt hình ảnh chính thành công')
+    );
   } catch (err) {
     logger.error('Set product main image failed', { error: err.message });
-    res.status(500).json({ error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi đặt hình ảnh chính', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 
@@ -98,22 +109,30 @@ async function removeImage(req, res) {
     // Kiểm tra sản phẩm tồn tại
     const product = await getProductById(product_id);
     if (!product) {
-      return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
+      return res.status(404).json(
+        createErrorResponse('Sản phẩm không tồn tại', ERROR_CODES.PRODUCT_NOT_FOUND, 404)
+      );
     }
 
     // Kiểm tra quyền
     if (String(product.seller_id) !== String(seller_id) && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Bạn không có quyền xóa hình ảnh cho sản phẩm này' });
+      return res.status(403).json(
+        createErrorResponse('Bạn không có quyền xóa hình ảnh cho sản phẩm này', ERROR_CODES.PERMISSION_DENIED, 403)
+      );
     }
 
     await deleteProductImage(image_id);
 
     logger.success('Product image removed', { image_id, product_id, user_id: seller_id });
 
-    res.json({ message: 'Xóa hình ảnh thành công' });
+    res.json(
+      createSuccessResponse({ image_id, product_id }, 'Xóa hình ảnh thành công')
+    );
   } catch (err) {
     logger.error('Remove product image failed', { error: err.message });
-    res.status(500).json({ error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi xóa hình ảnh', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 

@@ -12,6 +12,7 @@ const {
 } = require('../models/productModel');
 const { getImagesByProductId, addProductImage } = require('../models/productImageModel');
 const logger = require('../services/logger');
+const { ERROR_CODES, createSuccessResponse, createErrorResponse } = require('../utils/errorHandler');
 
 function toAbsoluteImageUrl(req, imageUrl) {
   if (!imageUrl) return imageUrl;
@@ -57,12 +58,14 @@ async function listActiveProducts(req, res) {
       })
     );
     
-    res.json({
-      message: 'Lấy danh sách sản phẩm thành công',
-      data: productsWithImages,
-    });
+    res.json(
+      createSuccessResponse(productsWithImages, 'Lấy danh sách sản phẩm thành công')
+    );
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error('List active products failed', { error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi lấy danh sách sản phẩm', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 
@@ -78,12 +81,14 @@ async function listUpcomingProducts(req, res) {
       })
     );
     
-    res.json({
-      message: 'Lấy danh sách sản phẩm sắp diễn ra thành công',
-      data: productsWithImages,
-    });
+    res.json(
+      createSuccessResponse(productsWithImages, 'Lấy danh sách sản phẩm sắp diễn ra thành công')
+    );
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error('List upcoming products failed', { error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi lấy danh sách sản phẩm sắp diễn ra', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 
@@ -94,7 +99,9 @@ async function getProductDetail(req, res) {
     
     const product = await getProductById(product_id);
     if (!product) {
-      return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
+      return res.status(404).json(
+        createErrorResponse('Sản phẩm không tồn tại', ERROR_CODES.PRODUCT_NOT_FOUND, 404)
+      );
     }
     
     // Check thời gian và update status tương ứng
@@ -126,12 +133,14 @@ async function getProductDetail(req, res) {
     // Lấy hình ảnh
     const images = normalizeImages(req, await getImagesByProductId(product_id));
     
-    res.json({
-      message: 'Lấy chi tiết sản phẩm thành công',
-      data: { ...product, images },
-    });
+    res.json(
+      createSuccessResponse({ ...product, images }, 'Lấy chi tiết sản phẩm thành công')
+    );
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error('Get product detail failed', { error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi lấy chi tiết sản phẩm', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 
@@ -141,7 +150,9 @@ async function searchProduct(req, res) {
     const { keyword } = req.query;
     
     if (!keyword) {
-      return res.status(400).json({ message: 'Vui lòng nhập từ khóa tìm kiếm' });
+      return res.status(400).json(
+        createErrorResponse('Vui lòng nhập từ khóa tìm kiếm', ERROR_CODES.INVALID_INPUT, 400)
+      );
     }
     
     const products = await searchProducts(keyword);
@@ -153,12 +164,14 @@ async function searchProduct(req, res) {
       })
     );
     
-    res.json({
-      message: 'Tìm kiếm sản phẩm thành công',
-      data: productsWithImages,
-    });
+    res.json(
+      createSuccessResponse(productsWithImages, 'Tìm kiếm sản phẩm thành công')
+    );
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error('Search product failed', { error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi tìm kiếm sản phẩm', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 
@@ -176,12 +189,14 @@ async function getProductsByCateg(req, res) {
       })
     );
     
-    res.json({
-      message: 'Lấy sản phẩm theo danh mục thành công',
-      data: productsWithImages,
-    });
+    res.json(
+      createSuccessResponse(productsWithImages, 'Lấy sản phẩm theo danh mục thành công')
+    );
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error('Get products by category failed', { error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi lấy sản phẩm theo danh mục', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 
@@ -199,12 +214,14 @@ async function getMyProducts(req, res) {
       })
     );
     
-    res.json({
-      message: 'Lấy danh sách sản phẩm của bạn thành công',
-      data: productsWithImages,
-    });
+    res.json(
+      createSuccessResponse(productsWithImages, 'Lấy danh sách sản phẩm của bạn thành công')
+    );
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error('Get my products failed', { error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi lấy danh sách sản phẩm', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 
@@ -217,11 +234,15 @@ async function createNewProduct(req, res) {
     
     // Validate
     if (!title || !start_price || !start_time || !category_id) {
-      return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin bắt buộc' });
+      return res.status(400).json(
+        createErrorResponse('Vui lòng điền đầy đủ thông tin bắt buộc', ERROR_CODES.INVALID_INPUT, 400)
+      );
     }
     
     if (start_price <= 0) {
-      return res.status(400).json({ message: 'Giá khởi điểm phải lớn hơn 0' });
+      return res.status(400).json(
+        createErrorResponse('Giá khởi điểm phải lớn hơn 0', ERROR_CODES.INVALID_INPUT, 400)
+      );
     }
     
     // Auto-calculate end_time = start_time + 30 minutes
@@ -237,7 +258,9 @@ async function createNewProduct(req, res) {
     }
     
     if (startTimeObj >= finalEndTime) {
-      return res.status(400).json({ message: 'Thời gian kết thúc phải sau thời gian bắt đầu' });
+      return res.status(400).json(
+        createErrorResponse('Thời gian kết thúc phải sau thời gian bắt đầu', ERROR_CODES.INVALID_INPUT, 400)
+      );
     }
     
     const product_id = await createProduct({
@@ -261,10 +284,14 @@ async function createNewProduct(req, res) {
 
     logger.success('Product created', { product_id, user_id: seller_id, with_image: !!req.file });
     
-    res.status(201).json({ message: 'Đăng sản phẩm thành công', data: responseData });
+    res.status(201).json(
+      createSuccessResponse(responseData, 'Đăng sản phẩm thành công')
+    );
   } catch (err) {
     logger.error('Create product failed', { error: err.message });
-    res.status(500).json({ error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi đăng sản phẩm', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 
@@ -279,12 +306,16 @@ async function updateProductInfo(req, res) {
     // Kiểm tra sản phẩm tồn tại
     const product = await getProductById(product_id);
     if (!product) {
-      return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
+      return res.status(404).json(
+        createErrorResponse('Sản phẩm không tồn tại', ERROR_CODES.PRODUCT_NOT_FOUND, 404)
+      );
     }
     
     // Kiểm tra quyền (chủ sở hữu hoặc admin)
     if (String(product.seller_id) !== String(seller_id) && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Bạn không có quyền cập nhật sản phẩm này' });
+      return res.status(403).json(
+        createErrorResponse('Bạn không có quyền cập nhật sản phẩm này', ERROR_CODES.PERMISSION_DENIED, 403)
+      );
     }
     
     const updates = {};
@@ -298,10 +329,14 @@ async function updateProductInfo(req, res) {
 
     logger.success('Product updated', { product_id, user_id: seller_id });
     
-    res.json({ message: 'Cập nhật sản phẩm thành công' });
+    res.json(
+      createSuccessResponse({ product_id }, 'Cập nhật sản phẩm thành công')
+    );
   } catch (err) {
     logger.error('Update product failed', { error: err.message });
-    res.status(500).json({ error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi cập nhật sản phẩm', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 
@@ -314,12 +349,16 @@ async function deleteProductItem(req, res) {
     // Kiểm tra sản phẩm tồn tại
     const product = await getProductById(product_id);
     if (!product) {
-      return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
+      return res.status(404).json(
+        createErrorResponse('Sản phẩm không tồn tại', ERROR_CODES.PRODUCT_NOT_FOUND, 404)
+      );
     }
     
     // Kiểm tra quyền (chủ sở hữu hoặc admin)
     if (String(product.seller_id) !== String(seller_id) && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Bạn không có quyền xóa sản phẩm này' });
+      return res.status(403).json(
+        createErrorResponse('Bạn không có quyền xóa sản phẩm này', ERROR_CODES.PERMISSION_DENIED, 403)
+      );
     }
     
     // Chỉ xóa được nếu chưa có ai đặt giá
@@ -329,10 +368,14 @@ async function deleteProductItem(req, res) {
 
     logger.success('Product deleted', { product_id, user_id: seller_id });
     
-    res.json({ message: 'Xóa sản phẩm thành công' });
+    res.json(
+      createSuccessResponse({ product_id }, 'Xóa sản phẩm thành công')
+    );
   } catch (err) {
     logger.error('Delete product failed', { error: err.message });
-    res.status(500).json({ error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi xóa sản phẩm', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 

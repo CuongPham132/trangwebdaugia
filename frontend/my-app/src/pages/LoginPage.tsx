@@ -1,40 +1,33 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Card, Space, Divider, Row, Col, Alert } from 'antd';
 import { MailOutlined, LockOutlined } from '@ant-design/icons';
+import { useDispatch, useSelector } from 'react-redux';
 import { Layout } from '../layout';
-import { userAPI } from '../services/api';
+import { loginUser } from '../stores/thunks';
+import type { AppDispatch, RootState } from '../stores';
 
 export const LoginPage: React.FC = () => {
   const [form] = Form.useForm<{ email: string; password: string }>();
-  const [loading, setLoading] = React.useState(false);
-  const [submitError, setSubmitError] = React.useState<string>('');
+  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  const { isLoading, error } = useSelector(
+    (state: RootState) => state.auth
+  );
 
   const handleSubmit = async (values: { email: string; password: string }) => {
-    setSubmitError('');
-    setLoading(true);
     try {
-      // Call API to login
-      const response = await userAPI.login(values);
-      
-      // Success: save token and redirect to marketplace
-      if (response.data && response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        // Save user info if needed
-        if (response.data.user) {
-          localStorage.setItem('user', JSON.stringify(response.data.user));
-        }
-        // Reload page to update Header state, then navigate
+      const result = await dispatch(loginUser(values)).unwrap();
+      if (result) {
+        // Redirect based on role
+        const redirectUrl = result.user.role === 'admin' ? '/admin' : '/marketplace';
         setTimeout(() => {
-          window.location.href = '/marketplace';
+          navigate(redirectUrl);
         }, 800);
       }
-    } catch (error) {
-      // Error: show message but DON'T redirect
-      setSubmitError('Tài khoản hoặc mật khẩu sai');
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      // Error is handled by Redux slice
     }
   };
 
@@ -66,9 +59,9 @@ export const LoginPage: React.FC = () => {
             </motion.div>
 
             {/* Error Alert */}
-            {submitError && (
+            {error && (
               <Alert
-                message={submitError}
+                message={error}
                 type="error"
                 showIcon
                 style={{ marginBottom: '16px' }}
@@ -121,7 +114,7 @@ export const LoginPage: React.FC = () => {
                   type="primary"
                   htmlType="submit"
                   block
-                  loading={loading}
+                  loading={isLoading}
                   size="large"
                   style={{
                     background: 'linear-gradient(135deg, #ff7a45 0%, #d9534f 100%)',
@@ -129,7 +122,7 @@ export const LoginPage: React.FC = () => {
                     fontWeight: 'bold',
                   }}
                 >
-                  {loading ? '⏳ Đang xử lý...' : '🚀 Đăng Nhập'}
+                  {isLoading ? '⏳ Đang xử lý...' : '🚀 Đăng Nhập'}
                 </Button>
               </motion.div>
             </Form>

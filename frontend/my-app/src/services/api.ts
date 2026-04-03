@@ -7,6 +7,26 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
 };
 
 // ============================================
+// ⭐ SERVER TIME SYNCHRONIZATION
+// ============================================
+let serverTimeOffset = 0; // Milliseconds
+
+/**
+ * Lấy thời gian hiện tại đã đồng bộ với server
+ * Client time + offset = Server time
+ */
+export function getServerTime(): Date {
+  return new Date(new Date().getTime() + serverTimeOffset);
+}
+
+/**
+ * Lấy offset (ms) giữa server và client
+ */
+export function getServerTimeOffset(): number {
+  return serverTimeOffset;
+}
+
+// ============================================
 // API CONFIGURATION
 // ============================================
 const api: AxiosInstance = axios.create({
@@ -24,6 +44,26 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ⭐ Đồng bộ server time từ response headers
+api.interceptors.response.use(
+  (response) => {
+    // Lấy thời gian server từ response header
+    const serverDateHeader = response.headers['date'];
+    if (serverDateHeader) {
+      const serverTime = new Date(serverDateHeader).getTime();
+      const clientTime = new Date().getTime();
+      serverTimeOffset = serverTime - clientTime;
+      
+      // Debug log (optional)
+      if (Math.abs(serverTimeOffset) > 1000) {
+        console.warn(`⚠️ Server time offset: ${serverTimeOffset}ms`);
+      }
+    }
+    return response;
   },
   (error) => Promise.reject(error)
 );
@@ -163,12 +203,63 @@ export const imageAPI = {
 };
 
 // ============================================
-// 7. HOME ROUTES (/api/home/)
+// 7. WALLET ROUTES (/api/wallet/)
+// ============================================
+export const walletAPI = {
+  // Get wallet info
+  getWallet: (userId: number) => api.get(`/wallet/${userId}`),
+
+  // Get transaction history
+  getTransactionHistory: (userId: number, limit: number = 50) =>
+    api.get(`/wallet/${userId}/transactions`, { params: { limit } }),
+
+  // Check balance
+  checkBalance: (userId: number, amount: number) =>
+    api.post('/wallet/check-balance', { user_id: userId, amount }),
+
+  // Deposit money
+  deposit: (userId: number, amount: number) =>
+    api.post('/wallet/deposit', { user_id: userId, amount }),
+
+  // Withdraw money
+  withdraw: (userId: number, amount: number) =>
+    api.post('/wallet/withdraw', { user_id: userId, amount }),
+};
+
+// ============================================
+// 8. HOME ROUTES (/api/home/)
 // ============================================
 export const homeAPI = {
   getHome: () => api.get('/home'),
 
   getTrending: () => api.get('/home/trending'),
+};
+
+// ============================================
+// 9. ADMIN ROUTES (/api/admin/)
+// ============================================
+export const adminAPI = {
+  // Dashboard Stats
+  getDashboardStats: () => api.get('/admin/dashboard'),
+
+  // Users Management
+  getAllUsers: (page: number = 1, limit: number = 10) =>
+    api.get('/admin/users', { params: { page, limit } }),
+
+  deleteUser: (userId: number) => api.delete(`/admin/users/${userId}`),
+
+  updateUserRole: (userId: number, role: 'user' | 'admin') =>
+    api.put(`/admin/users/${userId}/role`, { role }),
+
+  // Products Management
+  getAllProducts: (page: number = 1, limit: number = 10, status?: string) =>
+    api.get('/admin/products', { params: { page, limit, status } }),
+
+  deleteProduct: (productId: number) => api.delete(`/admin/products/${productId}`),
+
+  // Bids Management
+  getAllBids: (page: number = 1, limit: number = 20) =>
+    api.get('/admin/bids', { params: { page, limit } }),
 };
 
 // ============================================

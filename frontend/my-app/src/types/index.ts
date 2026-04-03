@@ -23,12 +23,15 @@ export interface Product {
   min_increment: number;
   start_time: string;
   end_time: string;
+  original_end_time?: string;
   status: AuctionStatus;
   category_id: number;
   seller_id: string;
   image_url?: string;
   images?: ProductImage[];
   total_bids?: number;
+  extension_count?: number;
+  max_extensions?: number;
   seller?: {
     user_id: string;
     username: string;

@@ -197,33 +197,7 @@ const HomePage: React.FC = () => {
 
         <SellersSection sellers={sellers} loading={loading} />
 
-        <section
-          style={{
-            background: 'linear-gradient(120deg, #082f49 0%, #0f766e 100%)',
-            padding: '52px 16px',
-            color: 'white',
-          }}
-        >
-          <div style={{ maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
-            <h2 style={{ fontSize: '34px', fontWeight: 800, margin: 0 }}>Tham gia đấu giá ngay hôm nay</h2>
-            <p style={{ color: 'rgba(255,255,255,0.9)', margin: '12px 0 24px', fontSize: '16px' }}>
-              Đăng ký để nhận cảnh báo phiên hot, theo dõi lịch sử giá và đấu giá theo thời gian thực.
-            </p>
-            <Button
-              type="primary"
-              size="large"
-              icon={<FireOutlined />}
-              style={{
-                background: '#f97316',
-                borderColor: '#f97316',
-                fontWeight: 700,
-              }}
-              onClick={() => navigate('/register')}
-            >
-              Đăng ký ngay
-            </Button>
-          </div>
-        </section>
+        {/* CTA Section removed */}
       </div>
     </Layout>
   );

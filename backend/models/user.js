@@ -1,5 +1,4 @@
 const { sql } = require('../config/db');
-const { randomUUID } = require('crypto');
 
 //Lấy user theo id
 async function getUserById(user_id){
@@ -15,10 +14,9 @@ async function getUserByEmail(email){
 
 //Tạo user mới
 async function createUser({ username, email, password, role }) {
-  const user_id = randomUUID(); // tạo ID duy nhất cho user
   await sql.query`
-    INSERT INTO [user] (user_id, username, email, password, role, created_at)
-    VALUES (${user_id}, ${username}, ${email}, ${password}, ${role}, GETDATE())
+    INSERT INTO [user] (username, email, password, role, created_at)
+    VALUES (${username}, ${email}, ${password}, ${role}, GETDATE())
   `;
 }
 
@@ -39,4 +37,44 @@ async function getUserStats(user_id) {
   return result.recordset[0];
 }
 
-module.exports = { getUserById, getUserByEmail, createUser, getUserStats };
+// Update thông tin user
+async function updateUser(user_id, { username, status }) {
+  try {
+    const updates = [];
+    const params = {};
+    
+    if (username !== undefined) {
+      updates.push('username = @username');
+      params.username = username;
+    }
+    
+    if (status !== undefined) {
+      updates.push('[status] = @status');
+      params.status = status;
+    }
+    
+    if (updates.length === 0) {
+      return { success: true, message: 'Không có thay đổi' };
+    }
+    
+    const query = `
+      UPDATE [user]
+      SET ${updates.join(', ')}
+      WHERE user_id = @user_id;
+      SELECT * FROM [user] WHERE user_id = @user_id;
+    `;
+    
+    const request = sql.request();
+    request.input('user_id', user_id);
+    Object.entries(params).forEach(([key, value]) => {
+      request.input(key, value);
+    });
+    
+    const result = await request.query(query);
+    return result.recordset[0];
+  } catch (error) {
+    throw error;
+  }
+}
+
+module.exports = { getUserById, getUserByEmail, createUser, getUserStats, updateUser };

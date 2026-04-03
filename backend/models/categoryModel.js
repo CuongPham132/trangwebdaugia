@@ -16,9 +16,10 @@ async function getCategoryById(category_id) {
 async function createCategory({ name, description }) {
   const result = await sql.query`
     INSERT INTO category (name, description)
-    VALUES (${name}, ${description})
+    VALUES (${name}, ${description});
+    SELECT SCOPE_IDENTITY() as category_id
   `;
-  return result;
+  return result.recordset[0].category_id;
 }
 
 module.exports = { getAllCategories, getCategoryById, createCategory };

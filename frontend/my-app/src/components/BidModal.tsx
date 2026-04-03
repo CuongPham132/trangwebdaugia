@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { message } from 'antd';
+import { WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
 
 interface BidModalProps {
   isOpen: boolean;
@@ -10,6 +11,10 @@ interface BidModalProps {
   onClose: () => void;
   onSubmit: (amount: number) => void;
   loading?: boolean;
+  error?: string;
+  errorCode?: string;
+  walletBalance?: number;
+  lockedBalance?: number;
 }
 
 export const BidModal: React.FC<BidModalProps> = ({
@@ -20,8 +25,13 @@ export const BidModal: React.FC<BidModalProps> = ({
   onClose,
   onSubmit,
   loading = false,
+  error,
+  errorCode,
+  walletBalance = 0,
+  lockedBalance = 0,
 }) => {
   const [bidAmount, setBidAmount] = React.useState(minBid);
+  const totalAvailable = walletBalance + lockedBalance;
 
   React.useEffect(() => {
     setBidAmount(minBid);
@@ -60,6 +70,62 @@ export const BidModal: React.FC<BidModalProps> = ({
             ✕
           </button>
         </div>
+
+        {/* Error Messages */}
+        {error && (
+          <motion.div
+            className={`mb-6 p-4 rounded-lg border-2 ${
+              errorCode === 'RACE_CONDITION'
+                ? 'bg-yellow-50 border-yellow-300'
+                : 'bg-red-50 border-red-300'
+            }`}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex gap-2">
+              <WarningOutlined
+                className={
+                  errorCode === 'RACE_CONDITION'
+                    ? 'text-yellow-600'
+                    : 'text-red-600'
+                }
+                style={{ fontSize: '18px' }}
+              />
+              <div>
+                <p
+                  className={
+                    errorCode === 'RACE_CONDITION'
+                      ? 'text-sm text-yellow-700'
+                      : 'text-sm text-red-700'
+                  }
+                >
+                  {error}
+                </p>
+                {errorCode === 'RACE_CONDITION' && (
+                  <p className="text-xs text-yellow-600 mt-2">
+                    💡 Hãy cập nhật giá và thử lại
+                  </p>
+                )}
+                {errorCode === 'INSUFFICIENT_BALANCE' && (
+                  <p className="text-xs text-red-600 mt-2">
+                    💰 <a href="/wallet/page">Nạp tiền vào ví</a> để tiếp tục đấu giá
+                  </p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Wallet Info */}
+        {walletBalance !== undefined && (
+          <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-6">
+            <p className="text-xs text-blue-700">
+              💳 Số dư ví: <span className="font-bold">${totalAvailable.toFixed(2)}</span>
+              {' '}(Khả dụng: ${walletBalance.toFixed(2)}, Khóa: $
+              {lockedBalance.toFixed(2)})
+            </p>
+          </div>
+        )}
 
         {/* Product Info */}
         <div className="bg-gradient-to-r from-orange-50 to-red-50 p-4 rounded-xl mb-6">

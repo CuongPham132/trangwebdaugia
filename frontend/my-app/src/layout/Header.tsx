@@ -1,22 +1,80 @@
-import React, { useState } from 'react';
-import { Menu, Button, Dropdown, Input, Space, Badge, Avatar } from 'antd';
-import { SearchOutlined, LoginOutlined, UserOutlined, LogoutOutlined, ShoppingOutlined, BellOutlined, HomeOutlined } from '@ant-design/icons';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Menu, Button, Dropdown, Input, Space, Badge, Avatar, Card, Spin, Tooltip } from 'antd';
+import { SearchOutlined, LoginOutlined, UserOutlined, LogoutOutlined, ShoppingOutlined, BellOutlined, HomeOutlined, DashboardOutlined, WalletOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { clearNotifications as clearAllNotifications } from '../utils/notifications';
+import { logoutUser } from '../stores/thunks';
+import apiClient from '../services/api';
+import type { AppDispatch, RootState } from '../stores';
 import type { MenuProps } from 'antd';
 
-interface HeaderProps {
-  isLoggedIn?: boolean;
-  username?: string;
-  onLogout?: () => void;
-}
-
-export const Header: React.FC<HeaderProps> = ({ 
-  isLoggedIn = false,
-  username = 'User',
-  onLogout = () => {},
-}) => {
+export const Header: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  const { isAuthenticated, user } = useSelector(
+    (state: RootState) => state.auth
+  );
   const [searchValue, setSearchValue] = useState('');
+  const [notifications, setNotifications] = useState<Array<{id: string; message: string; type: 'success' | 'info' | 'warning'; timestamp: number}>>([]);
+  const [wallet, setWallet] = useState<{wallet_id: number; balance: number; locked_balance: number} | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+
+  // Load notifications from localStorage on mount
+  React.useEffect(() => {
+    const stored = localStorage.getItem('notifications');
+    if (stored) {
+      try {
+        setNotifications(JSON.parse(stored));
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // Listen for notification changes
+    const handleNotificationAdded = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const newNotif = customEvent.detail;
+      setNotifications((prev) => [newNotif, ...prev].slice(0, 10));
+    };
+
+    const handleNotificationsCleared = () => {
+      setNotifications([]);
+    };
+
+    window.addEventListener('notificationAdded', handleNotificationAdded);
+    window.addEventListener('notificationsCleared', handleNotificationsCleared);
+
+    return () => {
+      window.removeEventListener('notificationAdded', handleNotificationAdded);
+      window.removeEventListener('notificationsCleared', handleNotificationsCleared);
+    };
+  }, []);
+
+  // Fetch wallet data when authenticated
+  React.useEffect(() => {
+    if (isAuthenticated && user?.user_id) {
+      const fetchWallet = async () => {
+        try {
+          setWalletLoading(true);
+          const response = await apiClient.get(`/wallet/${user.user_id}`);
+          if (response.data.success) {
+            setWallet(response.data.data);
+          }
+        } catch (error) {
+          console.error('Failed to fetch wallet:', error);
+        } finally {
+          setWalletLoading(false);
+        }
+      };
+      fetchWallet();
+    }
+  }, [isAuthenticated, user?.user_id]);
+
+  // Check if user is admin
+  const isAdmin = useMemo(() => {
+    return user?.role === 'admin';
+  }, [user]);
 
   const menuItems: MenuProps['items'] = [
     {
@@ -34,6 +92,13 @@ export const Header: React.FC<HeaderProps> = ({
       icon: <ShoppingOutlined />,
       label: <Link to="/seller-dashboard">Đăng bán</Link>,
     },
+    ...(isAuthenticated ? [
+      {
+        key: '/wallet',
+        icon: <WalletOutlined />,
+        label: <Link to="/wallet">Ví</Link>,
+      },
+    ] : []),
   ];
 
   const userMenuItems: MenuProps['items'] = [
@@ -50,6 +115,16 @@ export const Header: React.FC<HeaderProps> = ({
       key: 'sales',
       label: <Link to="/sales">Hàng bán của tôi</Link>,
     },
+    ...(isAdmin ? [
+      {
+        type: 'divider' as const,
+      },
+      {
+        key: 'admin',
+        icon: <DashboardOutlined />,
+        label: <Link to="/admin">🛡️ Admin Panel</Link>,
+      },
+    ] : []),
     {
       type: 'divider',
     },
@@ -57,7 +132,10 @@ export const Header: React.FC<HeaderProps> = ({
       key: 'logout',
       label: 'Đăng xuất',
       icon: <LogoutOutlined />,
-      onClick: onLogout,
+      onClick: () => {
+        dispatch(logoutUser());
+        navigate('/login');
+      },
     },
   ];
 
@@ -112,39 +190,118 @@ export const Header: React.FC<HeaderProps> = ({
         }}
       />
 
-      {/* Search Bar */}
-      <div style={{ width: '280px' }}>
-        <Input
-          placeholder="Tìm kiếm sản phẩm..."
-          prefix={<SearchOutlined />}
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
-          onPressEnter={handleSearch}
-          style={{ borderRadius: '20px', paddingRight: '12px' }}
-        />
-      </div>
+      {/* Wallet Display - Thay cho Search Bar */}
+      {isAuthenticated && user ? (
+        <Tooltip title="Quản lý ví">
+          <Link
+            to="/wallet"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              backgroundColor: '#f0f5ff',
+              borderRadius: '8px',
+              border: '1px solid #d9e8ff',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'all 0.3s',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = '#e6f7ff';
+              (e.currentTarget as HTMLElement).style.borderColor = '#91d5ff';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = '#f0f5ff';
+              (e.currentTarget as HTMLElement).style.borderColor = '#d9e8ff';
+            }}
+          >
+            <WalletOutlined style={{ fontSize: '18px', color: '#1890ff' }} />
+            {walletLoading ? (
+              <Spin size="small" />
+            ) : wallet ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '12px', color: '#666' }}>Số dư</span>
+                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
+                  ${wallet.balance.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            ) : (
+              <span style={{ fontSize: '12px', color: '#666' }}>Ví</span>
+            )}
+          </Link>
+        </Tooltip>
+      ) : (
+        // Search bar for non-authenticated users
+        <div style={{ width: '280px' }}>
+          <Input
+            placeholder="Tìm kiếm sản phẩm..."
+            prefix={<SearchOutlined />}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            onPressEnter={handleSearch}
+            style={{ borderRadius: '20px', paddingRight: '12px' }}
+          />
+        </div>
+      )}
 
       {/* Right Section */}
       <Space size="large">
-        {isLoggedIn ? (
+        {isAuthenticated && user ? (
           <>
-            {/* Notifications */}
-            <Badge count={3} offset={[-5, 5]}>
-              <BellOutlined
-                style={{
-                  fontSize: '20px',
-                  cursor: 'pointer',
-                  color: '#666',
-                  transition: 'all 0.3s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#1890ff';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#666';
-                }}
-              />
-            </Badge>
+            {/* Notifications Dropdown */}
+            <Dropdown 
+              menu={{
+                items: [
+                  ...notifications.map((notif) => ({
+                    key: notif.id,
+                    label: (
+                      <div style={{ maxWidth: '300px', padding: '8px 0' }}>
+                        <div style={{ fontSize: '13px' }}>{notif.message}</div>
+                        <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+                          {new Date(notif.timestamp).toLocaleTimeString('vi-VN')}
+                        </div>
+                      </div>
+                    ),
+                  })),
+                  ...(notifications.length > 0 ? [
+                    { type: 'divider' as const },
+                    {
+                      key: 'clear-all',
+                      label: 'Xóa tất cả',
+                      onClick: () => {
+                        clearAllNotifications();
+                        setNotifications([]);
+                      },
+                    },
+                  ] : [
+                    {
+                      key: 'no-notif',
+                      label: 'Chưa có thông báo',
+                      disabled: true,
+                    },
+                  ]),
+                ],
+              }}
+              placement="bottomRight"
+            >
+              <Badge count={notifications.length} offset={[-5, 5]}>
+                <BellOutlined
+                  style={{
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: '#666',
+                    transition: 'all 0.3s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#1890ff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#666';
+                  }}
+                />
+              </Badge>
+            </Dropdown>
 
             {/* User Dropdown */}
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
@@ -158,7 +315,7 @@ export const Header: React.FC<HeaderProps> = ({
                     fontSize: '20px',
                   }}
                 />
-                <span style={{ color: '#262626', fontWeight: 500 }}>{username}</span>
+                <span style={{ color: '#262626', fontWeight: 500 }}>{user.username}</span>
               </Space>
             </Dropdown>
           </>

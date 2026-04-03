@@ -1,0 +1,50 @@
+.wallet-card {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.wallet-header {
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.balance-section {
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.balance-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.balance-label {
+  font-size: 14px;
+  color: #666;
+}
+
+.balance-value {
+  font-size: 16px;
+  font-weight: bold;
+  color: #1890ff;
+}
+
+.balance-locked {
+  font-size: 16px;
+  font-weight: bold;
+  color: #faad14;
+}
+
+.balance-total {
+  font-size: 18px;
+  font-weight: bold;
+  color: #52c41a;
+}

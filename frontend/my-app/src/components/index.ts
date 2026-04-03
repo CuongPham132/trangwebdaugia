@@ -9,6 +9,7 @@ export { FilterBar } from './FilterBar';
 export { BidModal } from './BidModal';
 export { BidHistory } from './BidHistory';
 export { SellerDashboard } from './SellerDashboard';
+export { ProtectedRoute } from './ProtectedRoute';
 
 // Types
 export type { Product } from './ProductCard';

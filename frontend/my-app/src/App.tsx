@@ -1,9 +1,12 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './stores';
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { Header } from './layout/Header';
 import { Footer } from './layout/Footer';
+import { AdminLayout } from './layout/AdminLayout';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { syncServerTime } from './utils/timeHelper';
 import './App.css';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -27,6 +30,7 @@ const ProfilePage = lazy(() =>
     default: module.ProfilePage,
   }))
 );
+const WalletPage = lazy(() => import('./pages/WalletPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const SellerPostProductPage = lazy(() =>
   import('./pages/SellerPostProductPage').then((module) => ({
@@ -34,64 +38,156 @@ const SellerPostProductPage = lazy(() =>
   }))
 );
 
+// Admin Pages
+const AdminDashboard = lazy(() =>
+  import('./pages/AdminDashboardPage').then((module) => ({
+    default: module.AdminDashboard,
+  }))
+);
+const AdminUsers = lazy(() =>
+  import('./pages/AdminUsersPage').then((module) => ({
+    default: module.AdminUsersPage,
+  }))
+);
+const AdminProducts = lazy(() =>
+  import('./pages/AdminProductsPage').then((module) => ({
+    default: module.AdminProductsPage,
+  }))
+);
+const AdminBids = lazy(() =>
+  import('./pages/AdminBidsPage').then((module) => ({
+    default: module.AdminBidsPage,
+  }))
+);
+
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [username, setUsername] = useState('');
-
   useEffect(() => {
-    // Check if user is logged in by checking token in localStorage
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-    
-    if (token && user) {
-      try {
-        const userData = JSON.parse(user);
-        setIsLoggedIn(true);
-        setUsername(userData.username || userData.fullName || 'User');
-      } catch (error) {
-        setIsLoggedIn(false);
-        setUsername('');
-      }
-    } else {
-      setIsLoggedIn(false);
-      setUsername('');
-    }
+    // ⭐ Sync server time immediately on app load
+    syncServerTime();
   }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setIsLoggedIn(false);
-    setUsername('');
-    window.location.href = '/';
-  };
 
   return (
     <Provider store={store}>
       <Router>
-        <Header 
-          isLoggedIn={isLoggedIn}
-          username={username}
-          onLogout={handleLogout}
-        />
-        <Suspense
-          fallback={
-            <div style={{ minHeight: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              Đang tải trang...
-            </div>
-          }
-        >
+        <Suspense fallback={<div>Đang tải...</div>}>
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/marketplace" element={<MarketplacePage />} />
-            <Route path="/product/:productId" element={<ProductDetailPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/seller-dashboard" element={<SellerPostProductPage />} />
+            {/* Admin Routes - With AdminLayout - Protected */}
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminLayout currentPage="/admin"><AdminDashboard /></AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/admin/users" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminLayout currentPage="/admin/users"><AdminUsers /></AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/admin/products" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminLayout currentPage="/admin/products"><AdminProducts /></AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/admin/bids" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminLayout currentPage="/admin/bids"><AdminBids /></AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Regular Routes - With Header/Footer */}
+            <Route 
+              path="/" 
+              element={
+                <>
+                  <Header />
+                  <HomePage />
+                  <Footer />
+                </>
+              }
+            />
+            <Route 
+              path="/marketplace" 
+              element={
+                <>
+                  <Header />
+                  <MarketplacePage />
+                  <Footer />
+                </>
+              }
+            />
+            <Route 
+              path="/product/:productId" 
+              element={
+                <>
+                  <Header />
+                  <ProductDetailPage />
+                  <Footer />
+                </>
+              }
+            />
+            <Route 
+              path="/login" 
+              element={
+                <>
+                  <Header />
+                  <LoginPage />
+                  <Footer />
+                </>
+              }
+            />
+            <Route 
+              path="/register" 
+              element={
+                <>
+                  <Header />
+                  <RegisterPage />
+                  <Footer />
+                </>
+              }
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <>
+                  <Header />
+                  <ProfilePage />
+                  <Footer />
+                </>
+              }
+            />
+            <Route 
+              path="/wallet" 
+              element={
+                <ProtectedRoute>
+                  <Header />
+                  <WalletPage />
+                  <Footer />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/seller-dashboard" 
+              element={
+                <>
+                  <Header />
+                  <SellerPostProductPage />
+                  <Footer />
+                </>
+              }
+            />
           </Routes>
         </Suspense>
-        <Footer />
       </Router>
     </Provider>
   );

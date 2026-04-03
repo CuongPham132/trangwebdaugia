@@ -43,12 +43,16 @@ const upload = multer({
 // Public routes (không cần auth)
 router.get('/', listActiveProducts); // Danh sách sản phẩm đang đấu giá
 router.get('/upcoming', listUpcomingProducts); // Sản phẩm sắp diễn ra
-router.get('/detail/:product_id', getProductDetail); // Chi tiết sản phẩm
 router.get('/search', searchProduct); // Tìm kiếm sản phẩm
-router.get('/category/:category_id', getProductsByCateg); // Sản phẩm theo danh mục
 
 // Protected routes (cần auth)
-router.get('/my-products', authMiddleware, getMyProducts); // Lấy sản phẩm của seller
+router.get('/my-products', authMiddleware, getMyProducts); // Lấy sản phẩm của seller (PHẢI TRƯỚC /detail)
+
+// Public routes (động)
+router.get('/category/:category_id', getProductsByCateg); // Sản phẩm theo danh mục
+router.get('/detail/:product_id', getProductDetail); // Chi tiết sản phẩm (PHẢI SAU /my-products)
+
+// POST, PUT, DELETE routes
 router.post('/', authMiddleware, upload.single('image'), createNewProduct); // Đăng sản phẩm mới (có thể kèm ảnh)
 router.put('/:product_id', authMiddleware, updateProductInfo); // Cập nhật sản phẩm
 router.delete('/:product_id', authMiddleware, deleteProductItem); // Xóa sản phẩm

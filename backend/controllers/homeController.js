@@ -1,16 +1,20 @@
 const { getHomePageData, getTrendingProducts } = require('../models/homeModel');
+const logger = require('../services/logger');
+const { ERROR_CODES, createSuccessResponse, createErrorResponse } = require('../utils/errorHandler');
 
 // 1. Lấy dữ liệu trang chủ
 async function getHomePage(req, res) {
   try {
     const data = await getHomePageData();
 
-    res.json({
-      message: 'Lấy dữ liệu trang chủ thành công',
-      data,
-    });
+    res.json(
+      createSuccessResponse(data, 'Lấy dữ liệu trang chủ thành công')
+    );
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error('Get home page failed', { error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi lấy dữ liệu trang chủ', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 
@@ -19,12 +23,14 @@ async function getTrending(req, res) {
   try {
     const products = await getTrendingProducts();
 
-    res.json({
-      message: 'Lấy sản phẩm trending thành công',
-      data: products,
-    });
+    res.json(
+      createSuccessResponse(products, 'Lấy sản phẩm trending thành công')
+    );
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.error('Get trending products failed', { error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi lấy sản phẩm trending', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
   }
 }
 

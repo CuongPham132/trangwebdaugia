@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { getServerTime } from '../services/api';
 import type { AuctionStatus } from '../types';
 
 interface CountdownTimerProps {
   endTime: string;
   status: AuctionStatus;
+  extensionCount?: number;
+  maxExtensions?: number;
 }
 
 interface TimeLeft {
@@ -17,6 +20,8 @@ interface TimeLeft {
 export const CountdownTimer: React.FC<CountdownTimerProps> = ({
   endTime,
   status,
+  extensionCount = 0,
+  maxExtensions = 3,
 }) => {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
     days: 0,
@@ -28,7 +33,8 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
   useEffect(() => {
     const calculateTimeLeft = () => {
       const targetDate = new Date(endTime).getTime();
-      const now = new Date().getTime();
+      // ⭐ Dùng server time thay vì client time
+      const now = getServerTime().getTime();
       const difference = targetDate - now;
 
       if (difference > 0) {
@@ -80,13 +86,28 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
     );
   }
 
+  // Show extension info if time is running out
+  const isInFinalTen = timeLeft.minutes === 0 && timeLeft.seconds < 10;
+
   return (
-    <motion.div
-      className="text-orange-600 font-bold text-sm"
-      animate={{ scale: [1, 1.05, 1] }}
-      transition={{ duration: 2, repeat: Infinity }}
-    >
-      ⏳ {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
-    </motion.div>
+    <div className="flex flex-col gap-2">
+      <motion.div
+        className="text-orange-600 font-bold text-sm"
+        animate={{ scale: isInFinalTen ? [1, 1.05, 1] : 1 }}
+        transition={{ duration: 2, repeat: Infinity }}
+      >
+        ⏳ {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
+      </motion.div>
+      {extensionCount > 0 && (
+        <div className="text-xs text-purple-600">
+          🔄 Mở rộng: {extensionCount}/{maxExtensions} lần
+        </div>
+      )}
+      {isInFinalTen && extensionCount < maxExtensions && (
+        <div className="text-xs text-red-500 animate-pulse">
+          ⚠️ Đấu giá sẽ được mở rộng nếu có bid
+        </div>
+      )}
+    </div>
   );
 };

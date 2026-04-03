@@ -167,7 +167,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <span style={{ fontSize: '12px', color: '#666' }}>
             ⏱ {safeTotalBids} lượt đấu
           </span>
-          <CountdownTimer endTime={product.end_time} status={product.status} />
+          <CountdownTimer
+            endTime={product.end_time}
+            status={product.status}
+            extensionCount={product.extension_count}
+            maxExtensions={product.max_extensions}
+          />
         </Space>
 
         {/* Bid Button */}

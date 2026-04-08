@@ -38,20 +38,34 @@ const getAmountColor = (amount: number) => {
 export const TransactionHistory: React.FC<TransactionHistoryProps> = ({ user_id, limit = 50 }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchTransactions = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      console.log('🐛 Fetching transactions for user_id:', user_id, 'type:', typeof user_id);
+      
       const response = await apiClient.get(`/wallet/${user_id}/transactions`, {
         params: { limit },
       });
 
-      if (response.data.success) {
-        setTransactions(response.data.data);
+      console.log('🐛 Transactions response:', response.data);
+
+      // Handle both success flag and direct data array
+      const data = response.data?.data || response.data || [];
+      
+      if (Array.isArray(data)) {
+        setTransactions(data);
+      } else if (response.data.success) {
+        setTransactions(response.data.data || []);
       }
-    } catch (error) {
-      console.error('Failed to fetch transactions:', error);
-      message.error('Lỗi tải lịch sử giao dịch');
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || error.message || 'Lỗi tải lịch sử giao dịch';
+      console.error('❌ Failed to fetch transactions:', error.response?.data || error);
+      setError(errorMsg);
+      message.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -120,6 +134,18 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({ user_id,
         </Button>
       }
     >
+      {error && (
+        <div style={{ 
+          marginBottom: '16px', 
+          padding: '12px', 
+          border: '1px solid #ff7875', 
+          borderRadius: '4px',
+          backgroundColor: '#fff1f0',
+          color: '#ff4d4f'
+        }}>
+          ❌ {error}
+        </div>
+      )}
       <Spin spinning={loading}>
         <Table
           columns={columns}

@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import dayjs from 'dayjs';
 import {
   Row,
   Col,
@@ -39,6 +41,8 @@ import {
   normalizeProductResponse,
   normalizeProductsResponse,
 } from '../utils/safeData';
+import { updateWalletAfterBid } from '../stores/walletSlice';
+import { fetchWallet } from '../stores/thunks';
 
 type ApiErrorPayload = {
   message?: string;
@@ -49,8 +53,12 @@ const readCurrentUserId = (): string => {
   try {
     const raw = localStorage.getItem('user');
     if (!raw) return '';
-    const parsed = JSON.parse(raw) as { user_id?: string };
-    return typeof parsed.user_id === 'string' ? parsed.user_id : '';
+    const parsed = JSON.parse(raw) as { user_id?: string | number };
+    const userId = parsed.user_id;
+    // Handle both string and number types
+    if (typeof userId === 'string') return userId;
+    if (typeof userId === 'number') return String(userId);
+    return '';
   } catch {
     return '';
   }
@@ -81,6 +89,7 @@ export const ProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
   const resolvedProductId = Number(productId || 0);
   const queryClient = useQueryClient();
+  const dispatch = useDispatch();
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isBidModalOpen, setIsBidModalOpen] = useState(false);
   const [bidAmount, setBidAmount] = useState<number | null>(null);
@@ -153,7 +162,8 @@ export const ProductDetailPage: React.FC = () => {
   const loading = productQuery.isLoading || bidHistoryQuery.isLoading;
   const hasError = productQuery.isError || bidHistoryQuery.isError;
   const currentUserId = readCurrentUserId();
-  const isOwner = Boolean(currentUserId && product?.seller_id === currentUserId);
+  // Compare as strings to avoid type mismatch (seller_id could be number or string)
+  const isOwner = Boolean(currentUserId && String(product?.seller_id) === currentUserId);
 
   const handleBidSubmit = () => {
     if (!bidAmount) {
@@ -238,6 +248,17 @@ export const ProductDetailPage: React.FC = () => {
           next.unshift(nextBidHistoryEntry);
           return next;
         });
+
+        // Optimistic update for instant UI feedback
+        if (bidAmount) {
+          dispatch(updateWalletAfterBid(bidAmount));
+        }
+
+        // Refetch wallet from backend to ensure data consistency
+        const currentUserId = readCurrentUserId();
+        if (currentUserId) {
+          dispatch(fetchWallet(Number(currentUserId)) as any);
+        }
 
         message.success('Đặt giá thành công');
         setIsBidModalOpen(false);
@@ -545,6 +566,12 @@ export const ProductDetailPage: React.FC = () => {
                     </div>
                   </Space>
                 </Card>
+
+                {/* Bid Button - DEBUG INFO */}
+                {(() => {
+                  console.log('🐛 [PRODUCT] status:', product.status, '| seller_id:', product.seller_id, '| current_user:', currentUserId, '| isOwner:', isOwner);
+                  return null;
+                })()}
 
                 {/* Bid Button */}
                 <Button

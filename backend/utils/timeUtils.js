@@ -1,9 +1,31 @@
 /**
  * Time utility functions to handle network latency
  */
+const moment = require('moment-timezone');
 
 // Buffer time in seconds (để bù đắp độ trễ mạng)
 const NETWORK_BUFFER_SECONDS = 2;
+
+// Timezone used for application (Asia/Ho_Chi_Minh - UTC+7)
+const APP_TIMEZONE = 'Asia/Ho_Chi_Minh';
+
+/**
+ * Format datetime to app timezone (Asia/Ho_Chi_Minh)
+ * @param {Date|string} datetime 
+ * @returns {string} Formatted as YYYY-MM-DD HH:mm:ss
+ */
+function formatToAppTimezone(datetime) {
+  if (!datetime) return null;
+  return moment(datetime).tz(APP_TIMEZONE).format('YYYY-MM-DD HH:mm:ss');
+}
+
+/**
+ * Get current time in app timezone
+ * @returns {Date}
+ */
+function getCurrentTimeInAppTimezone() {
+  return moment().tz(APP_TIMEZONE).toDate();
+}
 
 /**
  * Kiểm tra xem bid có hợp lệ về thời gian không (có bao gồm buffer)
@@ -81,6 +103,9 @@ function getDeadlineWithBuffer(endTime) {
 
 module.exports = {
   NETWORK_BUFFER_SECONDS,
+  APP_TIMEZONE,
+  formatToAppTimezone,
+  getCurrentTimeInAppTimezone,
   isAuctionStillOpen,
   isAuctionStarted,
   secondsUntilBufferZone,

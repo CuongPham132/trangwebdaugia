@@ -290,24 +290,7 @@ export const MarketplacePage: React.FC = () => {
     setFilteredProducts(filtered);
   }, [filters, searchQuery, products]);
 
-  const handleBidClick = (productId: number) => {
-    const product = products.find((p) => p.product_id === productId);
-    if (product) {
-      const currentUserId = readCurrentUserId();
-      if (currentUserId && product.seller_id === currentUserId) {
-        message.warning('Bạn không thể đấu giá sản phẩm của chính mình');
-        return;
-      }
-
-      if (product.status !== 'active') {
-        message.warning('Sản phẩm không khả dụng để đấu giá');
-        return;
-      }
-
-      setSelectedProduct(product);
-      setSelectedProductId(productId);
-    }
-  };
+  // Use case: Click product card to navigate to product detail
 
   const handleBidSubmit = async (amount: number) => {
     if (!selectedProduct) return;
@@ -565,7 +548,6 @@ export const MarketplacePage: React.FC = () => {
                     products={activeProducts}
                     loading={loading}
                     onViewDetail={(productId) => navigate(`/product/${productId}`)}
-                    onBidClick={handleBidClick}
                     onPrefetchDetail={(productId) => {
                       void prefetchProductDetail(productId);
                     }}
@@ -583,7 +565,6 @@ export const MarketplacePage: React.FC = () => {
                     products={endingSoonProducts}
                     loading={loading}
                     onViewDetail={(productId) => navigate(`/product/${productId}`)}
-                    onBidClick={handleBidClick}
                     onPrefetchDetail={(productId) => {
                       void prefetchProductDetail(productId);
                     }}
@@ -601,7 +582,6 @@ export const MarketplacePage: React.FC = () => {
                     products={upcomingProducts}
                     loading={loading}
                     onViewDetail={(productId) => navigate(`/product/${productId}`)}
-                    onBidClick={handleBidClick}
                     onPrefetchDetail={(productId) => {
                       void prefetchProductDetail(productId);
                     }}
@@ -619,7 +599,6 @@ export const MarketplacePage: React.FC = () => {
                     products={fallbackProducts}
                     loading={loading}
                     onViewDetail={(productId) => navigate(`/product/${productId}`)}
-                    onBidClick={handleBidClick}
                     onPrefetchDetail={(productId) => {
                       void prefetchProductDetail(productId);
                     }}

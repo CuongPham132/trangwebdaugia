@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { Card, Row, Col, Button, Space, Spin, message, Modal, Input } from 'antd';
 import { WalletOutlined, PlusOutlined, MinusOutlined } from '@ant-design/icons';
+import type { RootState } from '../stores';
+import { fetchWallet } from '../stores/thunks';
 import apiClient from '../services/api';
 import './WalletCard.css';
 
@@ -15,35 +18,43 @@ interface Wallet {
 
 interface WalletCardProps {
   user_id: number;
+  onShowHistory?: () => void;
 }
 
-export const WalletCard: React.FC<WalletCardProps> = ({ user_id }) => {
+export const WalletCard: React.FC<WalletCardProps> = ({ user_id, onShowHistory }) => {
+  const dispatch = useDispatch();
+  const reduxWallet = useSelector((state: RootState) => state.wallet.wallet);
+  const isLoading = useSelector((state: RootState) => state.wallet.isLoading);
+  
+  console.log('🐛 WalletCard render:', { user_id, reduxWallet, isLoading });
+  
+  // Use Redux wallet state, fallback to local state if needed
   const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [loading, setLoading] = useState(false);
   const [depositModalVisible, setDepositModalVisible] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [processing, setProcessing] = useState(false);
 
-  const fetchWallet = async () => {
-    try {
-      setLoading(true);
-      const response = await apiClient.get(`/wallet/${user_id}`);
-      if (response.data.success) {
-        setWallet(response.data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch wallet:', error);
-      message.error('Lỗi tải thông tin ví');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    // Sync Redux wallet state to local state for backward compatibility
+    if (reduxWallet) {
+      setWallet(reduxWallet as Wallet);
     }
-  };
+  }, [reduxWallet]);
 
   useEffect(() => {
-    fetchWallet();
-  }, [user_id]);
+    // Fetch wallet from Redux on mount - only if user_id is valid
+    console.log('🐛 WalletCard: useEffect triggered for user_id:', user_id);
+    
+    if (!user_id || !Number.isFinite(user_id) || user_id <= 0) {
+      console.log('⚠️ WalletCard: Skipping fetch - invalid user_id:', user_id);
+      return;
+    }
+    
+    console.log('🐛 WalletCard: Fetching wallet for user_id:', user_id);
+    dispatch(fetchWallet({ user_id }) as any);
+  }, [user_id, dispatch]);
 
   const handleDeposit = async () => {
     if (!depositAmount || parseFloat(depositAmount) <= 0) {
@@ -63,7 +74,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({ user_id }) => {
         setWallet(response.data.data);
         setDepositAmount('');
         setDepositModalVisible(false);
-        fetchWallet();
+        dispatch(fetchWallet({ user_id }) as any);
       }
     } catch (error: any) {
       message.error(error.response?.data?.error || 'Lỗi nạp tiền');
@@ -90,7 +101,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({ user_id }) => {
         setWallet(response.data.data);
         setWithdrawAmount('');
         setWithdrawModalVisible(false);
-        fetchWallet();
+        dispatch(fetchWallet({ user_id }) as any);
       }
     } catch (error: any) {
       message.error(error.response?.data?.error || 'Lỗi rút tiền');
@@ -99,13 +110,17 @@ export const WalletCard: React.FC<WalletCardProps> = ({ user_id }) => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
+    console.log('🐛 WalletCard: Loading...');
     return <Spin />;
   }
 
   if (!wallet) {
+    console.log('🐛 WalletCard: No wallet data!', { reduxWallet, isLoading });
     return <div>Lỗi tải ví</div>;
   }
+
+  console.log('🐛 WalletCard: Wallet loaded:', wallet);
 
   return (
     <>
@@ -162,7 +177,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({ user_id }) => {
                 type="dashed"
                 size="large"
                 block
-                onClick={() => window.location.href = '/wallet/transactions'}
+                onClick={onShowHistory}
               >
                 Lịch sử giao dịch
               </Button>
@@ -181,7 +196,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({ user_id }) => {
       {/* Deposit Modal */}
       <Modal
         title="Nạp tiền vào ví"
-        visible={depositModalVisible}
+        open={depositModalVisible}
         onCancel={() => {
           setDepositModalVisible(false);
           setDepositAmount('');
@@ -203,7 +218,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({ user_id }) => {
       {/* Withdraw Modal */}
       <Modal
         title="Rút tiền từ ví"
-        visible={withdrawModalVisible}
+        open={withdrawModalVisible}
         onCancel={() => {
           setWithdrawModalVisible(false);
           setWithdrawAmount('');

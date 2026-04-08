@@ -28,4 +28,8 @@ router.post('/deposit', authMiddleware, walletController.deposit);
 // Withdraw money from wallet
 router.post('/withdraw', authMiddleware, walletController.withdraw);
 
+// POST /api/wallet/test/add-balance (TEST ONLY)
+// Add balance directly for testing
+router.post('/test/add-balance', authMiddleware, walletController.addBalanceForTesting);
+
 module.exports = router;

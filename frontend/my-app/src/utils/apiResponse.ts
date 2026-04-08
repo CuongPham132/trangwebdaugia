@@ -11,7 +11,25 @@ export function extractListData<T>(payload: unknown): T[] {
     return payload.data.data as T[];
   }
 
+  // Check for common nested array keys like bid_history, transactions, items, etc.
   if (isRecord(payload)) {
+    const commonKeys = ['bid_history', 'transactions', 'items', 'results', 'records'];
+    for (const key of commonKeys) {
+      if (Array.isArray(payload[key])) {
+        return payload[key] as T[];
+      }
+    }
+
+    // Also check in payload.data for these keys
+    if (isRecord(payload.data)) {
+      for (const key of commonKeys) {
+        if (Array.isArray(payload.data[key])) {
+          return payload.data[key] as T[];
+        }
+      }
+    }
+
+    // Fallback: return all Record values as before
     return Object.values(payload).filter(isRecord) as T[];
   }
 

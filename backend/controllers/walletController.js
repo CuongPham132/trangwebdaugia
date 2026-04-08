@@ -9,9 +9,14 @@ const { ERROR_CODES, createSuccessResponse, createErrorResponse } = require('../
  */
 async function getWallet(req, res) {
   try {
-    const { user_id } = req.params;
+    let { user_id } = req.params;
+    console.log('🐛 getWallet called with:', { raw: user_id, type: typeof user_id });
+    
+    user_id = Number(user_id);
+    console.log('🐛 After Number():', { user_id, type: typeof user_id, isFinite: Number.isFinite(user_id) });
 
-    if (!user_id || isNaN(user_id)) {
+    if (!user_id || !Number.isFinite(user_id) || user_id <= 0) {
+      console.log('❌ Validation failed:', { user_id, isFinite: Number.isFinite(user_id), check1: !user_id, check2: !Number.isFinite(user_id), check3: user_id <= 0 });
       return res.status(400).json(
         createErrorResponse('User ID không hợp lệ', ERROR_CODES.INVALID_INPUT, 400)
       );
@@ -25,6 +30,7 @@ async function getWallet(req, res) {
       );
     }
 
+    console.log('✅ Wallet loaded:', wallet);
     res.status(200).json(createSuccessResponse(wallet));
   } catch (error) {
     logger.error('Error in getWallet', { error: error.message });
@@ -38,10 +44,11 @@ async function getWallet(req, res) {
  */
 async function getTransactionHistory(req, res) {
   try {
-    const { user_id } = req.params;
+    let { user_id } = req.params;
+    user_id = Number(user_id);
     const { limit = 50 } = req.query;
 
-    if (!user_id || isNaN(user_id)) {
+    if (!user_id || !Number.isFinite(user_id) || user_id <= 0) {
       return res.status(400).json(
         createErrorResponse('User ID không hợp lệ', ERROR_CODES.INVALID_INPUT, 400)
       );
@@ -74,16 +81,18 @@ async function getTransactionHistory(req, res) {
  */
 async function deposit(req, res) {
   try {
-    const { user_id, amount } = req.body;
+    let { user_id, amount } = req.body;
+    user_id = Number(user_id);
+    amount = Number(amount);
 
     // Validation
-    if (!user_id || isNaN(user_id)) {
+    if (!user_id || !Number.isFinite(user_id) || user_id <= 0) {
       return res.status(400).json(
         createErrorResponse('User ID không hợp lệ', ERROR_CODES.INVALID_INPUT, 400)
       );
     }
 
-    if (!amount || isNaN(amount) || amount <= 0) {
+    if (!amount || !Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json(
         createErrorResponse('Số tiền nạp phải lớn hơn 0', ERROR_CODES.INVALID_INPUT, 400)
       );
@@ -106,16 +115,18 @@ async function deposit(req, res) {
  */
 async function withdraw(req, res) {
   try {
-    const { user_id, amount } = req.body;
+    let { user_id, amount } = req.body;
+    user_id = Number(user_id);
+    amount = Number(amount);
 
     // Validation
-    if (!user_id || isNaN(user_id)) {
+    if (!user_id || !Number.isFinite(user_id) || user_id <= 0) {
       return res.status(400).json(
         createErrorResponse('User ID không hợp lệ', ERROR_CODES.INVALID_INPUT, 400)
       );
     }
 
-    if (!amount || isNaN(amount) || amount <= 0) {
+    if (!amount || !Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json(
         createErrorResponse('Số tiền rút phải lớn hơn 0', ERROR_CODES.INVALID_INPUT, 400)
       );
@@ -145,15 +156,17 @@ async function withdraw(req, res) {
  */
 async function checkBalance(req, res) {
   try {
-    const { user_id, amount } = req.body;
+    let { user_id, amount } = req.body;
+    user_id = Number(user_id);
+    amount = Number(amount);
 
-    if (!user_id || isNaN(user_id)) {
+    if (!user_id || !Number.isFinite(user_id) || user_id <= 0) {
       return res.status(400).json(
         createErrorResponse('User ID không hợp lệ', ERROR_CODES.INVALID_INPUT, 400)
       );
     }
 
-    if (!amount || isNaN(amount) || amount <= 0) {
+    if (!amount || !Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json(
         createErrorResponse('Số tiền phải lớn hơn 0', ERROR_CODES.INVALID_INPUT, 400)
       );
@@ -168,10 +181,59 @@ async function checkBalance(req, res) {
   }
 }
 
+/**
+ * POST /api/wallet/test/add-balance
+ * TEST ONLY: Add balance directly for testing (admin only)
+ */
+async function addBalanceForTesting(req, res) {
+  try {
+    const { user_id, amount } = req.body;
+
+    if (!user_id || isNaN(user_id)) {
+      return res.status(400).json(
+        createErrorResponse('User ID không hợp lệ', ERROR_CODES.INVALID_INPUT, 400)
+      );
+    }
+
+    if (!amount || isNaN(amount) || amount <= 0) {
+      return res.status(400).json(
+        createErrorResponse('Số tiền phải lớn hơn 0', ERROR_CODES.INVALID_INPUT, 400)
+      );
+    }
+
+    const wallet = await walletModel.getOrCreateWallet(user_id);
+    
+    // Add balance using wallet_id from wallet object
+    await walletModel.addBalance(wallet.wallet_id, amount);
+
+    // Create transaction record for admin deposit
+    await walletModel.createTransaction(
+      wallet.wallet_id,
+      amount,
+      'admin_deposit',
+      null,
+      `Admin cấp tiền test: ${amount.toLocaleString('vi-VN')}₫`
+    );
+
+    const updatedWallet = await walletModel.getWallet(user_id);
+
+    logger.success('Test: Balance added', { user_id, amount, new_balance: updatedWallet.balance });
+    
+    res.status(200).json(createSuccessResponse({
+      message: `Thêm ${amount.toLocaleString('vi-VN')}₫ thành công`,
+      wallet: updatedWallet
+    }));
+  } catch (error) {
+    logger.error('Error in addBalanceForTesting', { error: error.message });
+    res.status(500).json(createErrorResponse('Lỗi thêm tiền', ERROR_CODES.DATABASE_ERROR, 500));
+  }
+}
+
 module.exports = {
   getWallet,
   getTransactionHistory,
   deposit,
   withdraw,
   checkBalance,
+  addBalanceForTesting,
 };

@@ -78,9 +78,10 @@ async function placeBid(req, res) {
     try {
       const balanceCheck = await walletService.checkSufficientBalance(user_id, bid_amount);
       if (!balanceCheck.sufficient) {
+        const shortage = bid_amount - balanceCheck.total_available;
         return res.status(400).json(
           createErrorResponse(
-            `Số dư không đủ. Bạn cần $${bid_amount - balanceCheck.total_available} thêm`,
+            `Số dư không đủ. Ví của bạn: ${balanceCheck.total_available.toLocaleString('vi-VN')}₫, cần thêm: ${shortage.toLocaleString('vi-VN')}₫`,
             ERROR_CODES.INSUFFICIENT_BALANCE,
             400,
             {
@@ -88,7 +89,7 @@ async function placeBid(req, res) {
               locked_balance: balanceCheck.locked_balance,
               total_available: balanceCheck.total_available,
               required_amount: bid_amount,
-              shortage: bid_amount - balanceCheck.total_available,
+              shortage: shortage,
             }
           )
         );
@@ -107,15 +108,18 @@ async function placeBid(req, res) {
     const minBidAmount = (highestBid ? highestBid.bid_amount : product.start_price) + product.min_increment;
 
     if (bid_amount < minBidAmount) {
+      const shortage = minBidAmount - bid_amount;
       return res.status(400).json(
         createErrorResponse(
-          `Mức giá phải cao hơn ${minBidAmount.toLocaleString('vi-VN')}`,
+          `Mức giá không đủ. Hiện tại: ${(highestBid ? highestBid.bid_amount : product.start_price).toLocaleString('vi-VN')}₫ + mức tăng tối thiểu: ${product.min_increment.toLocaleString('vi-VN')}₫ = ${minBidAmount.toLocaleString('vi-VN')}₫. Bạn cần đặt cao hơn ${shortage.toLocaleString('vi-VN')}₫`,
           ERROR_CODES.BID_BELOW_MINIMUM,
           400,
           {
             minimum_required: minBidAmount,
             current_highest: highestBid ? highestBid.bid_amount : product.start_price,
+            min_increment: product.min_increment,
             attempted_bid: bid_amount,
+            shortage: shortage,
           }
         )
       );
@@ -153,16 +157,20 @@ async function placeBid(req, res) {
       
       // Lấy giá hiện tại sau race condition
       const currentData = await getCurrentPrice(product_id);
-      const newMinBb = currentData.current_price + currentData.min_increment;
+      const newMinBid = currentData.current_price + currentData.min_increment;
+      const shortage = newMinBid - bid_amount;
 
       return res.status(400).json(
         createErrorResponse(
-          'Có ai đặt giá cao hơn. Hãy đặt giá mới',
+          `Có ai đặt giá cao hơn! Giá hiện tại: ${currentData.current_price.toLocaleString('vi-VN')}₫, bạn cần đặt ít nhất: ${newMinBid.toLocaleString('vi-VN')}₫ (cần thêm ${shortage.toLocaleString('vi-VN')}₫)`,
           ERROR_CODES.RACE_CONDITION,
           400,
           {
             current_price: currentData.current_price,
-            minimum_required: newMinBb,
+            minimum_required: newMinBid,
+            min_increment: currentData.min_increment,
+            attempted_bid: bid_amount,
+            shortage: shortage,
           }
         )
       );

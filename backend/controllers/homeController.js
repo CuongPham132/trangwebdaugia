@@ -1,4 +1,4 @@
-const { getHomePageData, getTrendingProducts } = require('../models/homeModel');
+const { getHomePageData, getOptimizedHomeData, getTrendingProducts } = require('../models/homeModel');
 const logger = require('../services/logger');
 const { ERROR_CODES, createSuccessResponse, createErrorResponse } = require('../utils/errorHandler');
 
@@ -18,7 +18,25 @@ async function getHomePage(req, res) {
   }
 }
 
-// 2. Lấy sản phẩm trending
+// 2. 🚀 Lấy dữ liệu Homepage tối ưu (Backend-driven)
+async function getOptimizedHome(req, res) {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 8, 50); // Max 50 để tránh over-fetch
+
+    const data = await getOptimizedHomeData(limit);
+
+    res.json(
+      createSuccessResponse(data, 'Lấy dữ liệu homepage tối ưu thành công')
+    );
+  } catch (err) {
+    logger.error('Get optimized home data failed', { error: err.message });
+    res.status(500).json(
+      createErrorResponse('Lỗi lấy dữ liệu homepage', ERROR_CODES.INTERNAL_ERROR, 500)
+    );
+  }
+}
+
+// 3. Lấy sản phẩm trending
 async function getTrending(req, res) {
   try {
     const products = await getTrendingProducts();
@@ -36,5 +54,6 @@ async function getTrending(req, res) {
 
 module.exports = {
   getHomePage,
+  getOptimizedHome,
   getTrending,
 };

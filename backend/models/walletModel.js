@@ -64,7 +64,8 @@ async function lockBalance(wallet_id, amount) {
     try {
         await sql.query`
             UPDATE wallet
-            SET locked_balance = locked_balance + ${amount},
+            SET balance = balance - ${amount},
+                locked_balance = locked_balance + ${amount},
                 updated_at = GETDATE()
             WHERE wallet_id = ${wallet_id}
         `;

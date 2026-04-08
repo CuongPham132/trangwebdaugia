@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Card, Tag, Button, Space } from 'antd';
-import { ShoppingCartOutlined } from '@ant-design/icons';
+import { Card, Tag, Space } from 'antd';
 import { CountdownTimer } from './CountdownTimer';
 import {
   getAuctionActionText,
@@ -37,28 +36,50 @@ export interface Product {
 interface ProductCardProps {
   product: Product;
   onViewDetail: (productId: number) => void;
-  onBidClick: (productId: number) => void;
   onPrefetchDetail?: (productId: number) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({
+const ProductCardComponent: React.FC<ProductCardProps> = ({
   product,
   onViewDetail,
-  onBidClick,
   onPrefetchDetail,
 }) => {
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const safeCurrentPrice = Number.isFinite(product.current_price) ? product.current_price : 0;
-  const safeHighestBid = Number.isFinite(product.highest_bid) ? product.highest_bid : safeCurrentPrice;
-  const safeTotalBids = Number.isFinite(product.total_bids) ? product.total_bids : 0;
-  const safeTitle = product.title || 'Sản phẩm đang cập nhật';
+
+  // 🎯 Memoize expensive calculations
+  const { safeCurrentPrice, safeHighestBid, safeTotalBids, safeTitle } = useMemo(
+    () => ({
+      safeCurrentPrice: Number.isFinite(product.current_price) ? product.current_price : 0,
+      safeHighestBid: Number.isFinite(product.highest_bid) ? product.highest_bid : 0,
+      safeTotalBids: Number.isFinite(product.total_bids) ? product.total_bids : 0,
+      safeTitle: product.title || 'Sản phẩm đang cập nhật',
+    }),
+    [product.current_price, product.highest_bid, product.total_bids, product.title]
+  );
+
+  // 🎯 Memoize callbacks
+  const handleViewDetail = useCallback(() => {
+    onViewDetail(product.product_id);
+  }, [product.product_id, onViewDetail]);
+
+  const handleWishlistClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setIsWishlisted((prev) => !prev);
+    },
+    []
+  );
+
+  const handleMouseEnter = useCallback(() => {
+    onPrefetchDetail?.(product.product_id);
+  }, [product.product_id, onPrefetchDetail]);
 
   return (
     <motion.div
       whileHover={{ y: -8 }}
-      onMouseEnter={() => onPrefetchDetail?.(product.product_id)}
-      onFocus={() => onPrefetchDetail?.(product.product_id)}
-      onClick={() => onViewDetail(product.product_id)}
+      onMouseEnter={handleMouseEnter}
+      onFocus={handleMouseEnter}
+      onClick={handleViewDetail}
     >
       <Card
         hoverable
@@ -122,10 +143,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 zIndex: 10,
               }}
               whileHover={{ scale: 1.2 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsWishlisted(!isWishlisted);
-              }}
+              onClick={handleWishlistClick}
             >
               {isWishlisted ? '❤️' : '🤍'}
             </motion.button>
@@ -174,21 +192,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             maxExtensions={product.max_extensions}
           />
         </Space>
-
-        {/* Bid Button */}
-        <Button
-          block
-          type={isAuctionActive(product.status) ? 'primary' : 'default'}
-          icon={<ShoppingCartOutlined />}
-          onClick={(e) => {
-            e.stopPropagation();
-            onBidClick(product.product_id);
-          }}
-          disabled={!isAuctionActive(product.status)}
-        >
-          {getAuctionActionText(product.status)}
-        </Button>
       </Card>
     </motion.div>
   );
 };
+
+// 🚀 Memoize component with custom comparison
+// Only re-render if product data or callbacks actually change
+export const ProductCard = React.memo(
+  ProductCardComponent,
+  (prevProps, nextProps) => {
+    // Return true if props are equal (skip re-render)
+    // Return false if props are different (do re-render)
+    return (
+      prevProps.product.product_id === nextProps.product.product_id &&
+      prevProps.product.title === nextProps.product.title &&
+      prevProps.product.current_price === nextProps.product.current_price &&
+      prevProps.product.highest_bid === nextProps.product.highest_bid &&
+      prevProps.product.total_bids === nextProps.product.total_bids &&
+      prevProps.product.status === nextProps.product.status &&
+      prevProps.product.image_url === nextProps.product.image_url &&
+      prevProps.onViewDetail === nextProps.onViewDetail
+    );
+  }
+);

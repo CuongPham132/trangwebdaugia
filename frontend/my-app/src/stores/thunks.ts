@@ -355,15 +355,50 @@ export const fetchWallet = createAsyncThunk(
   'wallet/fetch',
   async ({ user_id }: { user_id: number }, { rejectWithValue }) => {
     try {
+      console.log('🐛 fetchWallet thunk called with user_id:', user_id);
+      
+      // Guard: prevent invalid user_id
+      if (!user_id || !Number.isFinite(user_id) || user_id <= 0) {
+        console.warn('⚠️ fetchWallet: Invalid user_id, rejecting:', user_id);
+        return rejectWithValue('Invalid user ID');
+      }
+      
+      const token = getAuthToken();
+      console.log('🐛 Auth token:', token ? 'exists' : 'missing');
+      
       const response = await fetch(`${API_BASE_URL}/wallet/${user_id}`, {
         headers: {
-          Authorization: `Bearer ${getAuthToken()}`,
+          Authorization: `Bearer ${token}`,
         },
       });
+      
+      console.log('🐛 fetchWallet response status:', response.status, response.statusText);
+      
+      // Handle 304 Not Modified - try to get from cache or retry
+      if (response.status === 304) {
+        console.warn('⚠️ Got 304 Not Modified, retrying without cache...');
+        const retryResponse = await fetch(`${API_BASE_URL}/wallet/${user_id}?t=${Date.now()}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Cache-Control': 'no-cache',
+          },
+        });
+        const data = await retryResponse.json();
+        if (!retryResponse.ok) throw new Error(data.message || 'Failed to fetch wallet');
+        console.log('✅ fetchWallet retry data:', data.data);
+        return data.data;
+      }
+      
       const data = await response.json();
+      
+      console.log('🐛 fetchWallet response:', { ok: response.ok, status: response.status, data });
+      
       if (!response.ok) throw new Error(data.message || 'Failed to fetch wallet');
+      
+      console.log('🐛 fetchWallet returning data:', data.data);
       return data.data;
     } catch (error) {
+      console.error('❌ fetchWallet error:', error);
       return rejectWithValue((error as Error).message);
     }
   }

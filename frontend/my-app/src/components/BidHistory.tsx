@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { bidAPI } from '../services/api';
 
 interface BidHistory {
   bid_id: number;
@@ -15,30 +16,29 @@ interface BidHistoryProps {
 export const BidHistory: React.FC<BidHistoryProps> = ({ productId }) => {
   const [bids, setBids] = useState<BidHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchBidHistory = async () => {
       try {
         setLoading(true);
-        // const response = await bidAPI.getHistory(productId);
-        // setBids(response.data);
-        // Demo data
-        setBids([
-          {
-            bid_id: 1,
-            bidder_username: 'user123',
-            bid_amount: 250,
-            bid_time: new Date().toISOString(),
-          },
-          {
-            bid_id: 2,
-            bidder_username: 'buyer456',
-            bid_amount: 200,
-            bid_time: new Date().toISOString(),
-          },
-        ]);
+        setError(null);
+        const response = await bidAPI.getHistory(productId);
+        
+        // Map backend response to component interface
+        const bidHistoryData = response.data.data.bid_history || [];
+        const mappedBids = bidHistoryData.map((bid: any) => ({
+          bid_id: bid.bid_id,
+          bidder_username: bid.username,
+          bid_amount: bid.bid_amount,
+          bid_time: bid.bid_time,
+        }));
+        
+        setBids(mappedBids);
       } catch (error) {
-        console.error('Error fetching bids:', error);
+        console.error('Error fetching bid history:', error);
+        setError('Không thể tải lịch sử đấu giá');
+        setBids([]);
       } finally {
         setLoading(false);
       }
@@ -51,6 +51,14 @@ export const BidHistory: React.FC<BidHistoryProps> = ({ productId }) => {
     return (
       <div className="text-center py-4">
         <p className="text-gray-600">⏳ Đang tải lịch sử đấu giá...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-4">
+        <p className="text-red-600">❌ {error}</p>
       </div>
     );
   }

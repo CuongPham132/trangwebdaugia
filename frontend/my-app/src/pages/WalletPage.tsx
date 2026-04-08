@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Layout, Row, Col, Card } from 'antd';
 import { WalletCard } from '../components/WalletCard';
 import { TransactionHistory } from '../components/TransactionHistory';
@@ -8,13 +8,31 @@ const WalletPage: React.FC = () => {
   const token = localStorage.getItem('token');
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
-  const user_id = user?.user_id;
+  const user_id = user?.user_id ? Number(user.user_id) : null;
 
-  if (!user_id) {
+  // Debug logs
+  console.log('🐛 WalletPage Debug:', {
+    token: token ? 'exists' : 'missing',
+    userStr,
+    user,
+    user_id,
+    isFinite: Number.isFinite(user_id),
+  });
+
+  // Ref for smooth scroll to transaction history
+  const historyRef = useRef<HTMLDivElement>(null);
+
+  const scrollToHistory = () => {
+    historyRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  if (!user_id || !Number.isFinite(user_id) || user_id <= 0) {
     return (
       <Layout style={{ minHeight: '100vh', padding: '20px' }}>
         <div style={{ textAlign: 'center', paddingTop: '50px' }}>
           <h1>Vui lòng đăng nhập</h1>
+          <p>user_id: {user_id || 'null'}</p>
+          <p>Token: {token ? 'exists' : 'missing'}</p>
         </div>
       </Layout>
     );
@@ -27,7 +45,7 @@ const WalletPage: React.FC = () => {
 
         <Row gutter={[24, 24]}>
           <Col xs={24} lg={12}>
-            <WalletCard user_id={user_id} />
+            <WalletCard user_id={user_id} onShowHistory={scrollToHistory} />
           </Col>
           <Col xs={24} lg={12}>
             <Card title="Thông tin nhanh">
@@ -55,9 +73,11 @@ const WalletPage: React.FC = () => {
           </Col>
         </Row>
 
-        <Row gutter={[24, 24]} style={{ marginTop: '24px' }}>
+        <Row gutter={[24, 24]} style={{ marginTop: '48px' }}>
           <Col xs={24}>
-            <TransactionHistory user_id={user_id} limit={100} />
+            <div ref={historyRef}>
+              <TransactionHistory user_id={user_id} limit={100} />
+            </div>
           </Col>
         </Row>
       </div>

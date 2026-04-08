@@ -64,7 +64,27 @@ const walletSlice = createSlice({
     updateBalance: (state, action: PayloadAction<number>) => {
       if (state.wallet) {
         state.wallet.balance = action.payload;
-        state.wallet.available_balance = action.payload - (state.wallet.locked_balance || 0);
+        state.wallet.available_balance = state.wallet.balance - (state.wallet.locked_balance || 0);
+        state.lastUpdate = new Date().toISOString();
+      }
+    },
+    // Update wallet after bid placed (deduct from balance, add to locked_balance)
+    updateWalletAfterBid: (state, action: PayloadAction<number>) => {
+      if (state.wallet) {
+        const bidAmount = action.payload;
+        state.wallet.balance -= bidAmount;
+        state.wallet.locked_balance += bidAmount;
+        state.wallet.available_balance = state.wallet.balance - (state.wallet.locked_balance || 0);
+        state.lastUpdate = new Date().toISOString();
+      }
+    },
+    // Update wallet after bid is refunded (add back to balance, deduct from locked_balance)
+    updateWalletAfterBidRefund: (state, action: PayloadAction<number>) => {
+      if (state.wallet) {
+        const refundAmount = action.payload;
+        state.wallet.balance += refundAmount;
+        state.wallet.locked_balance -= Math.max(0, refundAmount);
+        state.wallet.available_balance = state.wallet.balance - (state.wallet.locked_balance || 0);
         state.lastUpdate = new Date().toISOString();
       }
     },
@@ -157,5 +177,5 @@ const walletSlice = createSlice({
   },
 });
 
-export const { clearError, updateBalance, addTransaction } = walletSlice.actions;
+export const { clearError, updateBalance, updateWalletAfterBid, updateWalletAfterBidRefund, addTransaction } = walletSlice.actions;
 export default walletSlice.reducer;

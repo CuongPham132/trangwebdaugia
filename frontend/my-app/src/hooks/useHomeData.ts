@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { categoryAPI, productAPI } from '../services/api';
+import { homeAPI, categoryAPI } from '../services/api';
 import type { Category, SellerSummary } from '../types';
 import type { Product } from '../components/ProductCard';
 import { normalizeCategoriesResponse, normalizeProductsResponse } from '../utils/safeData';
@@ -38,116 +38,57 @@ function toStringId(value: unknown): string {
 }
 
 export function useHomeData(): HomeDataState {
+  // 🚀 OPTIMIZED: Backend handles filtering, sorting, limiting
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['home-data'],
     queryFn: async () => {
-      const [productsRes, categoriesRes, upcomingRes] = await Promise.all([
-        productAPI.getAll(),
-        categoryAPI.getAll(),
-        productAPI.getUpcoming().catch(() => ({ data: [] })),
-      ]);
+      // Single API call: GET /api/home/optimized?limit=8
+      // Backend returns only needed data
+      const response = await homeAPI.getOptimized(8);
 
       return {
-        products: normalizeProductsResponse(productsRes.data),
-        categoriesRaw: normalizeCategoriesResponse(categoriesRes.data),
-        upcomingProducts: normalizeProductsResponse(upcomingRes.data),
+        activeProducts: normalizeProductsResponse(response.data.data.activeProducts || []),
+        endingSoonProducts: normalizeProductsResponse(response.data.data.endingSoonProducts || []),
+        upcomingProducts: normalizeProductsResponse(response.data.data.upcomingProducts || []),
+        categoriesRaw: response.data.data.categories || [],
       };
     },
-    staleTime: 60 * 1000,
-    gcTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000, // 60s cache
+    gcTime: 5 * 60 * 1000, // 5min garbage collection
     retry: 1,
     refetchOnWindowFocus: false,
   });
 
-  const products = data?.products || [];
-  const categoriesRaw = data?.categoriesRaw || [];
-  const upcomingProducts = data?.upcomingProducts || [];
-
   const activeProducts = useMemo<Product[]>(() => {
-    return products
-      .filter((product) => product.status === 'active')
-      .sort((a, b) => (b.total_bids || 0) - (a.total_bids || 0))
-      .slice(0, 12);
-  }, [products]);
+    return data?.activeProducts || [];
+  }, [data?.activeProducts]);
 
   const endingSoonProducts = useMemo<Product[]>(() => {
-    const now = Date.now();
-    return products
-      .filter((product) => product.status === 'active')
-      .map((product) => ({
-        product,
-        remaining: new Date(product.end_time).getTime() - now,
-      }))
-      .filter((entry) => Number.isFinite(entry.remaining) && entry.remaining > 0)
-      .sort((a, b) => a.remaining - b.remaining)
-      .slice(0, 8)
-      .map((entry) => entry.product);
-  }, [products]);
+    return data?.endingSoonProducts || [];
+  }, [data?.endingSoonProducts]);
 
-  const categoryCountMap = useMemo(() => {
-    return products.reduce<Record<number, number>>((acc, product) => {
-      const key = toNumber(product.category_id);
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-  }, [products]);
+  const upcomingProducts = useMemo<Product[]>(() => {
+    return data?.upcomingProducts || [];
+  }, [data?.upcomingProducts]);
+
+  const categoriesRaw = data?.categoriesRaw || [];
+
+  // 📊 Build sellers list from response (if needed, can be from API too)
+  const sellers = useMemo<SellerSummary[]>(() => {
+    // Placeholder - could be fetched from backend separately
+    return [];
+  }, []);
 
   const categories = useMemo<HomeCategoryItem[]>(() => {
-    return categoriesRaw.map((category) => {
+    return categoriesRaw.map((category: any) => {
       const categoryId = toNumber(category.category_id);
-      const countFromApi = toNumber((category as Category & { product_count?: number }).product_count);
       return {
         categoryId,
         name: category.name || 'Danh mục',
-        count: countFromApi || categoryCountMap[categoryId] || 0,
+        count: toNumber(category.product_count) || 0,
       };
     });
-  }, [categoriesRaw, categoryCountMap]);
-
-  const sellers = useMemo<SellerSummary[]>(() => {
-    const sellerMap = new Map<string, { username: string; items: number; highestBid: number }>();
-
-    products.forEach((product) => {
-      const sellerId = toStringId(product.seller_id);
-      if (!sellerId) {
-        return;
-      }
-      const username = product.seller?.username || `Seller #${sellerId}`;
-      const prev = sellerMap.get(sellerId);
-
-      if (!prev) {
-        sellerMap.set(sellerId, {
-          username,
-          items: 1,
-          highestBid: product.highest_bid || product.current_price || 0,
-        });
-        return;
-      }
-
-      prev.items += 1;
-      prev.highestBid = Math.max(prev.highestBid, product.highest_bid || product.current_price || 0);
-      sellerMap.set(sellerId, prev);
-    });
-
-    return Array.from(sellerMap.entries())
-      .sort((a, b) => b[1].items - a[1].items || b[1].highestBid - a[1].highestBid)
-      .slice(0, 4)
-      .map(([sellerId, value]) => ({
-        sellerId,
-        name: value.username,
-        rating: 4.8,
-        reviews: value.items * 25,
-        sales: value.items,
-      }));
-  }, [products]);
-
-  // TODO: Uncomment when backend provides trending/hot products data
-  // const hotProducts = useMemo<Product[]>(() => {
-  //   return products
-  //     .filter((p) => p.status === 'active')
-  //     .sort((a, b) => (b.total_bids || 0) - (a.total_bids || 0))
-  //     .slice(0, 8);
-  // }, [products]);
+  }, [categoriesRaw]);
 
   return {
     categories,

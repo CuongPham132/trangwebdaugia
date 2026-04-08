@@ -232,6 +232,9 @@ export const walletAPI = {
 export const homeAPI = {
   getHome: () => api.get('/home'),
 
+  // 🚀 NEW: Lấy dữ liệu homepage tối ưu (Backend-driven)
+  getOptimized: (limit = 8) => api.get('/home/optimized', { params: { limit } }),
+
   getTrending: () => api.get('/home/trending'),
 };
 

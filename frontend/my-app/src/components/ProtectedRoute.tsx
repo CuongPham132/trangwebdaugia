@@ -4,12 +4,12 @@ import { Result, Button } from 'antd';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: string;
+  requiredRole?: string; // Optional - nếu không pass, không check role
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  requiredRole = 'admin' 
+  requiredRole 
 }) => {
   const token = localStorage.getItem('token');
   const userStr = localStorage.getItem('user');
@@ -22,7 +22,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   try {
     const user = JSON.parse(userStr);
     
-    // Kiểm tra role
+    // Chỉ kiểm tra role nếu có pass requiredRole
     if (requiredRole && user.role !== requiredRole) {
       return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -40,7 +40,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       );
     }
 
-    // Có quyền -> render children
+    // Có token + (không yêu cầu role hoặc role đúng) -> render children
     return <>{children}</>;
   } catch (error) {
     return <Navigate to="/login" replace />;

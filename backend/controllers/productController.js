@@ -1,3 +1,4 @@
+const moment = require('moment-timezone');
 const {
   getAllProducts,
   getUpcomingProducts,
@@ -35,24 +36,6 @@ async function listActiveProducts(req, res) {
     // Thêm hình ảnh cho từng sản phẩm
     const productsWithImages = await Promise.all(
       products.map(async (product) => {
-        // Check thời gian và update status
-        const now = new Date();
-        const startTime = new Date(product.start_time);
-        const endTime = new Date(product.end_time);
-        
-        let updatedStatus = product.status;
-        if (now >= startTime && now < endTime) {
-          updatedStatus = 'active';
-        } else if (now >= endTime) {
-          updatedStatus = 'ended';
-        }
-        
-        if (updatedStatus !== product.status) {
-          await updateProduct(product.product_id, { status: updatedStatus });
-        }
-        
-        product.status = updatedStatus;
-        
         const images = await getImagesByProductId(product.product_id);
         return { ...product, images: normalizeImages(req, images) };
       })
@@ -102,32 +85,6 @@ async function getProductDetail(req, res) {
       return res.status(404).json(
         createErrorResponse('Sản phẩm không tồn tại', ERROR_CODES.PRODUCT_NOT_FOUND, 404)
       );
-    }
-    
-    // Check thời gian và update status tương ứng
-    const now = new Date();
-    const startTime = new Date(product.start_time);
-    const endTime = new Date(product.end_time);
-    
-    let updatedStatus = product.status;
-    
-    // Nếu chưa đến start_time → upcoming
-    if (now < startTime) {
-      updatedStatus = 'upcoming';
-    }
-    // Nếu đã qua start_time nhưng chưa qua end_time → active
-    else if (now >= startTime && now < endTime) {
-      updatedStatus = 'active';
-    }
-    // Nếu đã qua end_time → ended
-    else if (now >= endTime) {
-      updatedStatus = 'ended';
-    }
-    
-    // Cập nhật status nếu thay đổi
-    if (updatedStatus !== product.status) {
-      await updateProduct(product_id, { status: updatedStatus });
-      product.status = updatedStatus;
     }
     
     // Lấy hình ảnh
@@ -232,6 +189,14 @@ async function createNewProduct(req, res) {
     
     const { title, description, start_price, min_increment, start_time, end_time, category_id } = req.body;
     
+    // DEBUG LOG
+    console.log('🐛 [CREATE PRODUCT DEBUG]', {
+      start_time,
+      end_time,
+      start_time_type: typeof start_time,
+      end_time_type: typeof end_time,
+    });
+    
     // Validate
     if (!title || !start_price || !start_time || !category_id) {
       return res.status(400).json(
@@ -246,30 +211,67 @@ async function createNewProduct(req, res) {
     }
     
     // Auto-calculate end_time = start_time + 30 minutes
-    // Nếu client gửi end_time, kiểm tra không được quá 30 phút
-    const startTimeObj = new Date(start_time);
-    const maxEndTime = new Date(startTimeObj.getTime() + 30 * 60 * 1000); // +30 phút
+    // Use moment-timezone to parse Vietnam local time properly
+    const startTimeFormat = 'YYYY-MM-DD HH:mm:ss.SSS';
+    const startTimeMoment = moment.tz(start_time, startTimeFormat, 'Asia/Ho_Chi_Minh');
     
-    let finalEndTime = end_time ? new Date(end_time) : maxEndTime;
-    
-    // Nếu end_time quá xa (> 30 phút), giới hạn lại
-    if (finalEndTime > maxEndTime) {
-      finalEndTime = maxEndTime;
+    if (!startTimeMoment.isValid()) {
+      return res.status(400).json(
+        createErrorResponse('Định dạng start_time không hợp lệ', ERROR_CODES.INVALID_INPUT, 400)
+      );
     }
     
-    if (startTimeObj >= finalEndTime) {
+    const maxEndTimeMoment = startTimeMoment.clone().add(30, 'minutes'); // +30 phút
+    
+    let finalEndTimeMoment;
+    if (end_time) {
+      const endTimeMoment = moment.tz(end_time, startTimeFormat, 'Asia/Ho_Chi_Minh');
+      if (!endTimeMoment.isValid()) {
+        return res.status(400).json(
+          createErrorResponse('Định dạng end_time không hợp lệ', ERROR_CODES.INVALID_INPUT, 400)
+        );
+      }
+      finalEndTimeMoment = endTimeMoment;
+    } else {
+      finalEndTimeMoment = maxEndTimeMoment;
+    }
+    
+    // DEBUG LOG 2
+    console.log('🐛 [TIME CALCULATION]', {
+      startTime: startTimeMoment.format('YYYY-MM-DD HH:mm:ss'),
+      maxEndTime: maxEndTimeMoment.format('YYYY-MM-DD HH:mm:ss'),
+      finalEndTime: finalEndTimeMoment.format('YYYY-MM-DD HH:mm:ss'),
+      startTime_vs_finalEndTime: startTimeMoment >= finalEndTimeMoment ? 'ERROR' : 'OK',
+    });
+    
+    // Nếu end_time quá xa (> 30 phút), giới hạn lại
+    if (finalEndTimeMoment > maxEndTimeMoment) {
+      finalEndTimeMoment = maxEndTimeMoment;
+    }
+    
+    if (startTimeMoment >= finalEndTimeMoment) {
       return res.status(400).json(
         createErrorResponse('Thời gian kết thúc phải sau thời gian bắt đầu', ERROR_CODES.INVALID_INPUT, 400)
       );
     }
+    
+    // Format times for DB (already in Vietnam time, just format as string)
+    const formattedStartTime = startTimeMoment.format('YYYY-MM-DD HH:mm:ss');
+    const formattedEndTime = finalEndTimeMoment.format('YYYY-MM-DD HH:mm:ss');
+    
+    console.log('🐛 [DB INSERT DATA]', {
+      formattedStartTime,
+      formattedEndTime,
+      check_end_greater_than_start: formattedEndTime > formattedStartTime ? 'YES' : 'NO',
+    });
     
     const product_id = await createProduct({
       title,
       description,
       start_price,
       min_increment: min_increment || 10000,
-      start_time,
-      end_time: finalEndTime.toISOString(),
+      start_time: formattedStartTime,
+      end_time: formattedEndTime,
       seller_id,
       category_id,
     });

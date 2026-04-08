@@ -156,7 +156,6 @@ const HomePage: React.FC = () => {
               products={activeProducts.slice(0, 8)}
               loading={loading}
               onViewDetail={(productId) => navigate(`/product/${productId}`)}
-              onBidClick={(productId) => navigate(`/product/${productId}`)}
             />
           </div>
         </section>
@@ -173,7 +172,6 @@ const HomePage: React.FC = () => {
               products={endingSoonProducts}
               loading={loading}
               onViewDetail={(productId) => navigate(`/product/${productId}`)}
-              onBidClick={(productId) => navigate(`/product/${productId}`)}
             />
           </div>
         </section>
@@ -190,7 +188,6 @@ const HomePage: React.FC = () => {
               products={upcomingProducts.slice(0, 8)}
               loading={loading}
               onViewDetail={(productId) => navigate(`/product/${productId}`)}
-              onBidClick={(productId) => navigate(`/product/${productId}`)}
             />
           </div>
         </section>

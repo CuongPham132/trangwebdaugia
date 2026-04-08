@@ -84,6 +84,84 @@ async function getHomePageData() {
   }
 }
 
+// 🚀 Lấy dữ liệu Homepage tối ưu (Backend-driven)
+async function getOptimizedHomeData(limit = 8) {
+  try {
+    // 1. ✅ Active Products (Đang đấu giá) - sorted by bid count
+    const activeProducts = await sql.query`
+      SELECT TOP 8
+        p.product_id,
+        p.title,
+        p.current_price,
+        p.end_time,
+        pi.image_url,
+        (SELECT COUNT(*) FROM bid WHERE product_id = p.product_id) as total_bids,
+        DATEDIFF(SECOND, GETDATE(), p.end_time) as seconds_remaining
+      FROM product p
+      LEFT JOIN product_image pi ON p.product_id = pi.product_id AND pi.is_primary = 1
+      WHERE p.status = 'active'
+        AND GETDATE() >= p.start_time 
+        AND GETDATE() < p.end_time
+      ORDER BY (SELECT COUNT(*) FROM bid WHERE product_id = p.product_id) DESC, p.created_at DESC
+    `;
+
+    // 2. ✅ Ending Soon Products (Sắp kết thúc - sorted by time)
+    const endingSoonProducts = await sql.query`
+      SELECT TOP 8
+        p.product_id,
+        p.title,
+        p.current_price,
+        p.end_time,
+        pi.image_url,
+        (SELECT COUNT(*) FROM bid WHERE product_id = p.product_id) as total_bids,
+        DATEDIFF(SECOND, GETDATE(), p.end_time) as seconds_remaining
+      FROM product p
+      LEFT JOIN product_image pi ON p.product_id = pi.product_id AND pi.is_primary = 1
+      WHERE p.status = 'active'
+        AND GETDATE() >= p.start_time 
+        AND GETDATE() < p.end_time
+      ORDER BY p.end_time ASC
+    `;
+
+    // 3. ✅ Upcoming Products (Sắp diễn ra)
+    const upcomingProducts = await sql.query`
+      SELECT TOP 8
+        p.product_id,
+        p.title,
+        p.current_price,
+        p.start_time,
+        pi.image_url
+      FROM product p
+      LEFT JOIN product_image pi ON p.product_id = pi.product_id AND pi.is_primary = 1
+      WHERE p.status = 'upcoming'
+        AND p.start_time > GETDATE()
+      ORDER BY p.start_time ASC
+    `;
+
+    // 4. ✅ Categories (Danh mục)
+    const categories = await sql.query`
+      SELECT TOP 8
+        c.category_id,
+        c.name,
+        COUNT(p.product_id) as product_count
+      FROM category c
+      LEFT JOIN product p ON c.category_id = p.category_id 
+        AND (p.status = 'active' OR p.status = 'upcoming')
+      GROUP BY c.category_id, c.name
+      ORDER BY COUNT(p.product_id) DESC
+    `;
+
+    return {
+      activeProducts: activeProducts.recordset,
+      endingSoonProducts: endingSoonProducts.recordset,
+      upcomingProducts: upcomingProducts.recordset,
+      categories: categories.recordset,
+    };
+  } catch (err) {
+    throw err;
+  }
+}
+
 // Lấy sản phẩm hot/trending
 async function getTrendingProducts() {
   const result = await sql.query`
@@ -106,5 +184,6 @@ async function getTrendingProducts() {
 
 module.exports = {
   getHomePageData,
+  getOptimizedHomeData,
   getTrendingProducts,
 };

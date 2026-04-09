@@ -1,5 +1,3 @@
-
-
 -- Create new database
 CREATE DATABASE dau_gia;
 GO
@@ -97,7 +95,7 @@ CREATE TABLE wallet (
     wallet_id INT IDENTITY(1,1) PRIMARY KEY,
     user_id INT NOT NULL UNIQUE,
     balance DECIMAL(18,2) DEFAULT 0, -- Tiền mặt có thể xài
-    locked_balance DECIMAL(18,2) DEFAULT 0, -- Tiền đang bị kẹt trong các bid
+locked_balance DECIMAL(18,2) DEFAULT 0, -- Tiền đang bị kẹt trong các bid
     total_spent DECIMAL(18,2) DEFAULT 0, -- Tổng tiền đã chi (cho analytics)
     updated_at DATETIME DEFAULT GETDATE(),
     
@@ -163,4 +161,173 @@ CREATE INDEX idx_transaction_reference_id ON transaction_history(reference_id);
 ALTER TABLE product
 ADD CONSTRAINT fk_product_winning_bid_id
 FOREIGN KEY (winning_bid_id) REFERENCES bid(bid_id) ON DELETE NO ACTION;
+GO
+
+-- ========================
+-- TRIGGERS
+-- ========================
+
+-- 1) Tự động tạo ví khi tạo user mới
+IF OBJECT_ID('trg_user_auto_create_wallet', 'TR') IS NOT NULL
+    DROP TRIGGER trg_user_auto_create_wallet;
+GO
+CREATE TRIGGER trg_user_auto_create_wallet
+ON [user]
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO wallet (user_id, balance, locked_balance, total_spent, updated_at)
+    SELECT i.user_id, 0, 0, 0, GETDATE()
+    FROM inserted i
+    LEFT JOIN wallet w ON w.user_id = i.user_id
+    WHERE w.user_id IS NULL;
+END;
+GO
+
+-- 2) Chuẩn hóa dữ liệu product khi vừa tạo
+--    current_price mặc định bằng start_price nếu chưa set
+IF OBJECT_ID('trg_product_set_initial_price', 'TR') IS NOT NULL
+    DROP TRIGGER trg_product_set_initial_price;
+GO
+CREATE TRIGGER trg_product_set_initial_price
+ON product
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE p
+    SET p.current_price = ISNULL(p.current_price, p.start_price)
+    FROM product p
+    INNER JOIN inserted i ON p.product_id = i.product_id;
+END;
+GO
+
+-- 3) Đảm bảo mỗi product chỉ có đúng 1 ảnh chính (is_main = 1)
+IF OBJECT_ID('trg_product_image_single_main', 'TR') IS NOT NULL
+    DROP TRIGGER trg_product_image_single_main;
+GO
+CREATE TRIGGER trg_product_image_single_main
+ON product_image
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    ;WITH touched_products AS (
+        SELECT DISTINCT product_id FROM inserted
+    ),
+    ranked_images AS (
+        SELECT
+            pi.image_id,
+            pi.product_id,
+            ROW_NUMBER() OVER (
+                PARTITION BY pi.product_id
+                ORDER BY CASE WHEN pi.is_main = 1 THEN 0 ELSE 1 END, pi.image_id
+            ) AS rn
+        FROM product_image pi
+        INNER JOIN touched_products tp ON tp.product_id = pi.product_id
+    )
+    UPDATE pi
+    SET
+        pi.is_main = CASE WHEN r.rn = 1 THEN 1 ELSE 0 END,
+        pi.is_primary = CASE WHEN r.rn = 1 THEN 1 ELSE 0 END
+    FROM product_image pi
+    INNER JOIN ranked_images r ON r.image_id = pi.image_id;
+END;
+GO
+
+-- 4) Kiểm tra giá bid hợp lệ + đồng bộ bid thắng vào bảng product
+IF OBJECT_ID('trg_bid_sync_winner', 'TR') IS NOT NULL
+    DROP TRIGGER trg_bid_sync_winner;
+GO
+CREATE TRIGGER trg_bid_sync_winner
+ON bid
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Validation cho insert/update: bid phải >= current_price + min_increment
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        INNER JOIN product p ON p.product_id = i.product_id
+        WHERE i.bid_amount < (ISNULL(p.current_price, p.start_price) + ISNULL(p.min_increment, 0))
+    )
+    BEGIN
+        RAISERROR (N'Bid amount phải lớn hơn hoặc bằng giá hiện tại + bước giá tối thiểu.', 16, 1);
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
+    ;WITH touched_products AS (
+        SELECT DISTINCT product_id FROM inserted
+        UNION
+        SELECT DISTINCT product_id FROM deleted
+    ),
+    ranked_bids AS (
+        SELECT
+            b.bid_id,
+            b.product_id,
+            b.bid_amount,
+            ROW_NUMBER() OVER (
+PARTITION BY b.product_id
+                ORDER BY b.bid_amount DESC, b.bid_time ASC, b.bid_id ASC
+            ) AS rn
+        FROM bid b
+        INNER JOIN touched_products tp ON tp.product_id = b.product_id
+    )
+    UPDATE b
+    SET b.is_winning = CASE WHEN rb.rn = 1 THEN 1 ELSE 0 END
+    FROM bid b
+    INNER JOIN ranked_bids rb ON rb.bid_id = b.bid_id;
+
+    -- Đồng bộ current_price + winning_bid_id trên product
+    UPDATE p
+    SET
+        p.current_price = ISNULL(top_bid.bid_amount, p.start_price),
+        p.winning_bid_id = top_bid.bid_id
+    FROM product p
+    INNER JOIN (
+        SELECT DISTINCT product_id FROM inserted
+        UNION
+        SELECT DISTINCT product_id FROM deleted
+    ) tp ON tp.product_id = p.product_id
+    OUTER APPLY (
+        SELECT TOP 1 b.bid_id, b.bid_amount
+        FROM bid b
+        WHERE b.product_id = p.product_id
+        ORDER BY b.bid_amount DESC, b.bid_time ASC, b.bid_id ASC
+    ) AS top_bid;
+END;
+GO
+
+-- 5) Đồng bộ thống kê ví sau mỗi transaction
+IF OBJECT_ID('trg_transaction_sync_wallet_stats', 'TR') IS NOT NULL
+    DROP TRIGGER trg_transaction_sync_wallet_stats;
+GO
+CREATE TRIGGER trg_transaction_sync_wallet_stats
+ON transaction_history
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    ;WITH delta AS (
+        SELECT
+            i.wallet_id,
+            SUM(CASE WHEN i.transaction_type IN ('payment', 'withdraw') THEN ABS(i.amount) ELSE 0 END) AS spent_delta
+        FROM inserted i
+        GROUP BY i.wallet_id
+    )
+    UPDATE w
+    SET
+        w.total_spent = w.total_spent + d.spent_delta,
+        w.updated_at = GETDATE()
+    FROM wallet w
+    INNER JOIN delta d ON d.wallet_id = w.wallet_id;
+END;
 GO

@@ -7,6 +7,7 @@ const config = {
   database: process.env.DB_NAME,
   port: Number(process.env.DB_PORT || 1433),
   options: {
+    instanceName: 'SQLEXPRESS',
     encrypt: false,
     trustServerCertificate: true,
   },

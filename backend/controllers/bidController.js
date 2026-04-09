@@ -69,7 +69,7 @@ async function placeBid(req, res) {
     if (product.status !== 'active') {
       return res.status(400).json(
         createErrorResponse('Sản phẩm không khả dụng để đấu giá', ERROR_CODES.INVALID_STATUS, 400, {
-          current_status: product.status,
+current_status: product.status,
         })
       );
     }
@@ -136,45 +136,19 @@ async function placeBid(req, res) {
         total_extended_seconds: extensionResult.total_extended_seconds,
       });
     } else if (extensionResult.reason === 'EXTENSION_TIME_LIMIT_REACHED') {
-      logger.warn('Extension limit reached', {
+logger.warn('Extension limit reached', {
         product_id,
         total_extended_seconds: extensionResult.total_extended_seconds,
       });
     }
 
-    // ⭐ FIX RACE CONDITION: Tạo bid + Update price ATOMIC
-    // Nếu có race condition, hàm này sẽ detect và thông báo
+    // Trigger DB sẽ validate bid + đồng bộ winner/current_price.
     const bidResult = await createBidWithAtomicUpdate({
       product_id,
       user_id,
       bid_amount,
       min_increment: product.min_increment,
     });
-
-    // Nếu bị race condition (có ai nhanh tay hơn)
-    if (!bidResult.success && bidResult.reason === 'RACE_CONDITION') {
-      logger.warn('Race condition detected', { product_id, user_id, attempted_bid: bid_amount });
-      
-      // Lấy giá hiện tại sau race condition
-      const currentData = await getCurrentPrice(product_id);
-      const newMinBid = currentData.current_price + currentData.min_increment;
-      const shortage = newMinBid - bid_amount;
-
-      return res.status(400).json(
-        createErrorResponse(
-          `Có ai đặt giá cao hơn! Giá hiện tại: ${currentData.current_price.toLocaleString('vi-VN')}₫, bạn cần đặt ít nhất: ${newMinBid.toLocaleString('vi-VN')}₫ (cần thêm ${shortage.toLocaleString('vi-VN')}₫)`,
-          ERROR_CODES.RACE_CONDITION,
-          400,
-          {
-            current_price: currentData.current_price,
-            minimum_required: newMinBid,
-            min_increment: currentData.min_increment,
-            attempted_bid: bid_amount,
-            shortage: shortage,
-          }
-        )
-      );
-    }
 
     // ⭐ LOCK BALANCE: Sau khi bid thành công, lock tiền của user
     try {
@@ -206,6 +180,18 @@ async function placeBid(req, res) {
     );
   } catch (err) {
     logger.error('Place bid failed', { error: err.message });
+
+    // Trigger SQL trả lỗi validation bid => map về 400 cho FE.
+    if (err.message && err.message.includes('Bid amount phải lớn hơn hoặc bằng giá hiện tại + bước giá tối thiểu')) {
+      return res.status(400).json(
+        createErrorResponse(
+          'Mức giá không hợp lệ theo quy tắc bước giá tối thiểu',
+          ERROR_CODES.BID_BELOW_MINIMUM,
+          400
+        )
+      );
+    }
+
     return res.status(500).json(
       createErrorResponse('Lỗi đấu giá', ERROR_CODES.INTERNAL_ERROR, 500)
     );
@@ -236,7 +222,7 @@ async function viewBidHistory(req, res) {
       createSuccessResponse({
         product_id,
         product_title: product.title,
-        current_price: product.current_price,
+current_price: product.current_price,
         bid_history: bidHistory,
         statistics: {
           total_bids: statistics.total_bids,
@@ -327,7 +313,7 @@ async function retractBid(req, res) {
     // Kiểm tra người dùng có phải là người đặt bid không
     if (String(bid.user_id) !== String(user_id)) {
       return res.status(403).json(
-        createErrorResponse('Bạn không có quyền hủy bid này', ERROR_CODES.PERMISSION_DENIED, 403)
+createErrorResponse('Bạn không có quyền hủy bid này', ERROR_CODES.PERMISSION_DENIED, 403)
       );
     }
 

@@ -100,7 +100,7 @@ async function unlockBalance(wallet_id, amount) {
                     ELSE 0 
                 END,
                 updated_at = GETDATE()
-            WHERE wallet_id = ${wallet_id}
+WHERE wallet_id = ${wallet_id}
         `;
         
         const result = await sql.query`
@@ -131,7 +131,6 @@ async function deductLockedBalance(wallet_id, amount) {
                     WHEN locked_balance >= ${amount} THEN locked_balance - ${amount} 
                     ELSE 0 
                 END,
-                total_spent = total_spent + ${amount},
                 updated_at = GETDATE()
             WHERE wallet_id = ${wallet_id}
         `;
@@ -198,7 +197,7 @@ async function getTransactionHistory(wallet_id, limit = 50) {
                 amount,
                 transaction_type,
                 reference_id,
-                description,
+description,
                 created_at
             FROM transaction_history
             WHERE wallet_id = @wallet_id

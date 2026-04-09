@@ -92,7 +92,7 @@ async function unlockBalanceFromBid(user_id, bid_amount, product_id) {
         const updatedWallet = await walletModel.unlockBalance(wallet.wallet_id, bid_amount);
         
         // Create transaction record
-        await walletModel.createTransaction(
+await walletModel.createTransaction(
             wallet.wallet_id,
             -bid_amount,
             'bid_refund',
@@ -154,7 +154,7 @@ async function completeAuctionPayment(winner_id, seller_id, payment_amount, prod
         await walletModel.createTransaction(
             sellerWallet.wallet_id,
             payment_amount,
-            'payment',
+            'deposit',
             product_id,
             `Auction settlement - sold product #${product_id} to user #${winner_id}`
         );
@@ -190,7 +190,7 @@ async function completeAuctionPayment(winner_id, seller_id, payment_amount, prod
 async function processDeposit(user_id, amount) {
     try {
         if (amount <= 0) {
-            throw new Error('Deposit amount must be greater than 0');
+throw new Error('Deposit amount must be greater than 0');
         }
         
         const wallet = await walletModel.getOrCreateWallet(user_id);

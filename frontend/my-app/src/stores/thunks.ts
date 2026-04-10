@@ -82,16 +82,17 @@ export const fetchProducts = createAsyncThunk(
       if (params.maxPrice) searchParams.append('maxPrice', String(params.maxPrice));
       if (params.status) searchParams.append('status', params.status);
 
-      const response = await fetch(`${API_BASE_URL}/products/list-active?${searchParams.toString()}`, {
+      const response = await fetch(`${API_BASE_URL}/products?${searchParams.toString()}`, {
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
         },
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to fetch products');
+      const products = Array.isArray(data.data) ? data.data : [];
       return {
-        products: data.data || [],
-        totalCount: data.totalCount || 0,
+        products,
+        totalCount: products.length,
       };
     } catch (error) {
       return rejectWithValue((error as Error).message);
@@ -113,7 +114,7 @@ export const searchProducts = createAsyncThunk(
   async (params: SearchProductsParams = {}, { rejectWithValue }) => {
     try {
       const searchParams = new URLSearchParams();
-      if (params.query) searchParams.append('q', params.query);
+      if (params.query) searchParams.append('keyword', params.query);
       searchParams.append('page', String(params.page || 1));
       searchParams.append('limit', String(params.limit || 12));
       if (params.category_id) searchParams.append('category_id', String(params.category_id));
@@ -127,9 +128,10 @@ export const searchProducts = createAsyncThunk(
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Search failed');
+      const products = Array.isArray(data.data) ? data.data : [];
       return {
-        products: data.data || [],
-        totalCount: data.totalCount || 0,
+        products,
+        totalCount: products.length,
       };
     } catch (error) {
       return rejectWithValue((error as Error).message);
@@ -141,7 +143,7 @@ export const getProductDetail = createAsyncThunk(
   'products/getDetail',
   async ({ productId }: { productId: number }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+      const response = await fetch(`${API_BASE_URL}/products/detail/${productId}`, {
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
         },
@@ -156,18 +158,20 @@ export const getProductDetail = createAsyncThunk(
 );
 
 interface CreateProductParams {
-  product_name: string;
+  title: string;
   description: string;
   category_id: number;
-  starting_price: number;
-  auction_duration: number;
+  start_price: number;
+  min_increment?: number;
+  start_time: string;
+  end_time?: string;
 }
 
 export const createProduct = createAsyncThunk(
   'products/create',
   async (params: CreateProductParams, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/products/new-product`, {
+      const response = await fetch(`${API_BASE_URL}/products`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -186,18 +190,19 @@ export const createProduct = createAsyncThunk(
 
 interface UpdateProductParams {
   product_id: number;
-  product_name?: string;
+  title?: string;
   description?: string;
-  category_id?: number;
-  starting_price?: number;
+  status?: string;
+  start_time?: string;
+  end_time?: string;
 }
 
 export const updateProduct = createAsyncThunk(
   'products/update',
   async ({ product_id, ...updateData }: UpdateProductParams, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/products/update/${product_id}`, {
-        method: 'PATCH',
+      const response = await fetch(`${API_BASE_URL}/products/${product_id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getAuthToken()}`,
@@ -217,7 +222,7 @@ export const deleteProduct = createAsyncThunk(
   'products/delete',
   async ({ product_id }: { product_id: number }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/products/delete/${product_id}`, {
+      const response = await fetch(`${API_BASE_URL}/products/${product_id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
@@ -255,17 +260,18 @@ export const getMyProducts = createAsyncThunk(
 export const placeBid = createAsyncThunk(
   'bids/place',
   async (
-    { product_id, bid_price }: { product_id: number; bid_price: number },
+    { product_id, bid_amount, bid_price }: { product_id: number; bid_amount?: number; bid_price?: number },
     { rejectWithValue }
   ) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/bids/place-bid`, {
+      const finalBidAmount = bid_amount ?? bid_price;
+      const response = await fetch(`${API_BASE_URL}/bids`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getAuthToken()}`,
         },
-        body: JSON.stringify({ product_id, bid_price }),
+        body: JSON.stringify({ product_id, bid_amount: finalBidAmount }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to place bid');
@@ -280,14 +286,14 @@ export const getBidHistory = createAsyncThunk(
   'bids/history',
   async ({ product_id }: { product_id: number }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/bids/bid-history/${product_id}`, {
+      const response = await fetch(`${API_BASE_URL}/bids/history/${product_id}`, {
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
         },
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to fetch bid history');
-      return data.data || [];
+      return data?.data?.bid_history || [];
     } catch (error) {
       return rejectWithValue((error as Error).message);
     }
@@ -316,7 +322,7 @@ export const retractBid = createAsyncThunk(
   'bids/retract',
   async ({ bid_id }: { bid_id: number }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/bids/retract-bid/${bid_id}`, {
+      const response = await fetch(`${API_BASE_URL}/bids/${bid_id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
@@ -335,7 +341,7 @@ export const getTopBid = createAsyncThunk(
   'bids/getTop',
   async ({ product_id }: { product_id: number }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/bids/top-bid/${product_id}`, {
+      const response = await fetch(`${API_BASE_URL}/bids/top/${product_id}`, {
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
         },
@@ -427,7 +433,7 @@ export const fetchTransactionHistory = createAsyncThunk(
 
 export const depositMoney = createAsyncThunk(
   'wallet/deposit',
-  async ({ amount }: { amount: number }, { rejectWithValue }) => {
+  async ({ user_id, amount }: { user_id: number; amount: number }, { rejectWithValue }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/wallet/deposit`, {
         method: 'POST',
@@ -435,13 +441,13 @@ export const depositMoney = createAsyncThunk(
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getAuthToken()}`,
         },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ user_id, amount }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Deposit failed');
       return {
-        amount: data.data.amount,
-        transaction: data.data.transaction,
+        wallet: data.data,
+        amount,
       };
     } catch (error) {
       return rejectWithValue((error as Error).message);
@@ -451,7 +457,7 @@ export const depositMoney = createAsyncThunk(
 
 export const withdrawMoney = createAsyncThunk(
   'wallet/withdraw',
-  async ({ amount }: { amount: number }, { rejectWithValue }) => {
+  async ({ user_id, amount }: { user_id: number; amount: number }, { rejectWithValue }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/wallet/withdraw`, {
         method: 'POST',
@@ -459,13 +465,13 @@ export const withdrawMoney = createAsyncThunk(
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getAuthToken()}`,
         },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ user_id, amount }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Withdrawal failed');
       return {
-        amount: data.data.amount,
-        transaction: data.data.transaction,
+        wallet: data.data,
+        amount,
       };
     } catch (error) {
       return rejectWithValue((error as Error).message);
@@ -475,7 +481,7 @@ export const withdrawMoney = createAsyncThunk(
 
 export const checkBalance = createAsyncThunk(
   'wallet/checkBalance',
-  async ({ required_amount }: { required_amount: number }, { rejectWithValue }) => {
+  async ({ user_id, amount }: { user_id: number; amount: number }, { rejectWithValue }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/wallet/check-balance`, {
         method: 'POST',
@@ -483,13 +489,13 @@ export const checkBalance = createAsyncThunk(
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getAuthToken()}`,
         },
-        body: JSON.stringify({ required_amount }),
+        body: JSON.stringify({ user_id, amount }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Balance check failed');
       return {
-        hasSufficientBalance: data.data.has_sufficient_balance,
-        requiredAmount: data.data.required_amount,
+        hasSufficientBalance: Boolean(data.data?.sufficient ?? data.data?.has_sufficient_balance),
+        requiredAmount: Number(data.data?.required_amount ?? amount),
       };
     } catch (error) {
       return rejectWithValue((error as Error).message);
@@ -519,9 +525,9 @@ export const fetchUserProfile = createAsyncThunk(
 
 export const getUserStats = createAsyncThunk(
   'user/getStats',
-  async (_: void, { rejectWithValue }) => {
+  async ({ user_id }: { user_id: number }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/profile-stats`, {
+      const response = await fetch(`${API_BASE_URL}/users/${user_id}/stats`, {
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
         },
@@ -545,7 +551,7 @@ export const updateUserProfile = createAsyncThunk(
   'user/updateProfile',
   async (params: UpdateUserProfileParams, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/update-profile`, {
+      const response = await fetch(`${API_BASE_URL}/users/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

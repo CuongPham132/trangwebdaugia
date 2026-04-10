@@ -131,7 +131,6 @@ async function deductLockedBalance(wallet_id, amount) {
                     WHEN locked_balance >= ${amount} THEN locked_balance - ${amount} 
                     ELSE 0 
                 END,
-                total_spent = total_spent + ${amount},
                 updated_at = GETDATE()
             WHERE wallet_id = ${wallet_id}
         `;

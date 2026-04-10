@@ -53,23 +53,33 @@ export const Header: React.FC = () => {
 
   // Fetch wallet data when authenticated
   React.useEffect(() => {
-    if (isAuthenticated && user?.user_id) {
+    const userId = Number(user?.user_id);
+    if (isAuthenticated && Number.isFinite(userId) && userId > 0) {
       const fetchWallet = async () => {
         try {
           setWalletLoading(true);
-          const response = await apiClient.get(`/wallet/${user.user_id}`);
+          const response = await apiClient.get(`/wallet/${userId}`);
           if (response.data.success) {
             setWallet(response.data.data);
           }
-        } catch (error) {
+        } catch (error: any) {
+          const status = error?.response?.status;
+          if (status === 401 || status === 403) {
+            setWallet(null);
+            dispatch(logoutUser());
+            navigate('/login');
+            return;
+          }
           console.error('Failed to fetch wallet:', error);
         } finally {
           setWalletLoading(false);
         }
       };
       fetchWallet();
+    } else {
+      setWallet(null);
     }
-  }, [isAuthenticated, user?.user_id]);
+  }, [isAuthenticated, user?.user_id, dispatch, navigate]);
 
   // Check if user is admin
   const isAdmin = useMemo(() => {
@@ -106,14 +116,6 @@ export const Header: React.FC = () => {
       key: 'profile',
       icon: <UserOutlined />,
       label: <Link to="/profile">Hồ sơ của tôi</Link>,
-    },
-    {
-      key: 'purchases',
-      label: <Link to="/purchases">Mua hàng của tôi</Link>,
-    },
-    {
-      key: 'sales',
-      label: <Link to="/sales">Hàng bán của tôi</Link>,
     },
     ...(isAdmin ? [
       {

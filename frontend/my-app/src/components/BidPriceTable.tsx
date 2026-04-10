@@ -114,17 +114,17 @@ export const BidPriceTable: React.FC<BidPriceTableProps> = ({
       <Card
         title="📊 Bảng Giá Đấu Giá"
         style={{ borderRadius: '12px' }}
-        bodyStyle={{ padding: '16px' }}
+        styles={{ body: { padding: '16px' } }}
       >
         {/* Summary Stats */}
         <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
           <Col xs={12} sm={6}>
-            <Card style={{ background: '#fff8f0', border: '1px solid #ffd9bf' }} bordered={false}>
+            <Card style={{ background: '#fff8f0', border: '1px solid #ffd9bf' }} variant="borderless">
               <Statistic
                 title="💵 Giá Hiện Tại"
                 value={highestBid || currentPrice}
                 prefix="₫"
-                valueStyle={{ color: '#d9534f', fontSize: '18px' }}
+                styles={{ content: { color: '#d9534f', fontSize: '18px' } }}
                 formatter={(value) =>
                   (value as number).toLocaleString('vi-VN')
                 }
@@ -132,12 +132,12 @@ export const BidPriceTable: React.FC<BidPriceTableProps> = ({
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card style={{ background: '#fff8f0', border: '1px solid #ffd9bf' }} bordered={false}>
+            <Card style={{ background: '#fff8f0', border: '1px solid #ffd9bf' }} variant="borderless">
               <Statistic
                 title="📈 Bước Nhảy"
                 value={minIncrement}
                 prefix="₫"
-                valueStyle={{ color: '#ff7a45', fontSize: '18px' }}
+                styles={{ content: { color: '#ff7a45', fontSize: '18px' } }}
                 formatter={(value) =>
                   (value as number).toLocaleString('vi-VN')
                 }
@@ -145,12 +145,12 @@ export const BidPriceTable: React.FC<BidPriceTableProps> = ({
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card style={{ background: '#f0f9ff', border: '1px solid #b5d8ff' }} bordered={false}>
+            <Card style={{ background: '#f0f9ff', border: '1px solid #b5d8ff' }} variant="borderless">
               <Statistic
                 title="🎯 Đặt Tối Thiểu"
                 value={(highestBid || currentPrice) + minIncrement}
                 prefix="₫"
-                valueStyle={{ color: '#1890ff', fontSize: '18px' }}
+                styles={{ content: { color: '#1890ff', fontSize: '18px' } }}
                 formatter={(value) =>
                   (value as number).toLocaleString('vi-VN')
                 }
@@ -158,11 +158,11 @@ export const BidPriceTable: React.FC<BidPriceTableProps> = ({
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card style={{ background: '#f0f5ff', border: '1px solid #d9e8fc' }} bordered={false}>
+            <Card style={{ background: '#f0f5ff', border: '1px solid #d9e8fc' }} variant="borderless">
               <Statistic
                 title="🔥 Tổng Lượt Đấu"
                 value={totalBids}
-                valueStyle={{ color: '#1890ff', fontSize: '18px' }}
+                styles={{ content: { color: '#1890ff', fontSize: '18px' } }}
               />
             </Card>
           </Col>

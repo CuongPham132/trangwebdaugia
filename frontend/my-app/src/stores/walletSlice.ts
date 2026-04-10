@@ -132,11 +132,8 @@ const walletSlice = createSlice({
       })
       .addCase(depositMoney.fulfilled, (state, action) => {
         state.isLoading = false;
-        if (state.wallet) {
-          state.wallet.balance += action.payload.amount;
-          state.wallet.available_balance = state.wallet.balance - (state.wallet.locked_balance || 0);
-        }
-        state.transactions.unshift(action.payload.transaction);
+        state.wallet = action.payload.wallet;
+        state.lastUpdate = new Date().toISOString();
       })
       .addCase(depositMoney.rejected, (state, action) => {
         state.isLoading = false;
@@ -151,11 +148,8 @@ const walletSlice = createSlice({
       })
       .addCase(withdrawMoney.fulfilled, (state, action) => {
         state.isLoading = false;
-        if (state.wallet) {
-          state.wallet.balance -= action.payload.amount;
-          state.wallet.available_balance = state.wallet.balance - (state.wallet.locked_balance || 0);
-        }
-        state.transactions.unshift(action.payload.transaction);
+        state.wallet = action.payload.wallet;
+        state.lastUpdate = new Date().toISOString();
       })
       .addCase(withdrawMoney.rejected, (state, action) => {
         state.isLoading = false;

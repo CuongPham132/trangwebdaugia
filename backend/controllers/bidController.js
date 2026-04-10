@@ -142,39 +142,13 @@ async function placeBid(req, res) {
       });
     }
 
-    // ⭐ FIX RACE CONDITION: Tạo bid + Update price ATOMIC
-    // Nếu có race condition, hàm này sẽ detect và thông báo
+    // Trigger DB sẽ validate bid + đồng bộ winner/current_price.
     const bidResult = await createBidWithAtomicUpdate({
       product_id,
       user_id,
       bid_amount,
       min_increment: product.min_increment,
     });
-
-    // Nếu bị race condition (có ai nhanh tay hơn)
-    if (!bidResult.success && bidResult.reason === 'RACE_CONDITION') {
-      logger.warn('Race condition detected', { product_id, user_id, attempted_bid: bid_amount });
-      
-      // Lấy giá hiện tại sau race condition
-      const currentData = await getCurrentPrice(product_id);
-      const newMinBid = currentData.current_price + currentData.min_increment;
-      const shortage = newMinBid - bid_amount;
-
-      return res.status(400).json(
-        createErrorResponse(
-          `Có ai đặt giá cao hơn! Giá hiện tại: ${currentData.current_price.toLocaleString('vi-VN')}₫, bạn cần đặt ít nhất: ${newMinBid.toLocaleString('vi-VN')}₫ (cần thêm ${shortage.toLocaleString('vi-VN')}₫)`,
-          ERROR_CODES.RACE_CONDITION,
-          400,
-          {
-            current_price: currentData.current_price,
-            minimum_required: newMinBid,
-            min_increment: currentData.min_increment,
-            attempted_bid: bid_amount,
-            shortage: shortage,
-          }
-        )
-      );
-    }
 
     // ⭐ LOCK BALANCE: Sau khi bid thành công, lock tiền của user
     try {
@@ -206,6 +180,18 @@ async function placeBid(req, res) {
     );
   } catch (err) {
     logger.error('Place bid failed', { error: err.message });
+
+    // Trigger SQL trả lỗi validation bid => map về 400 cho FE.
+    if (err.message && err.message.includes('Bid amount phải lớn hơn hoặc bằng giá hiện tại + bước giá tối thiểu')) {
+      return res.status(400).json(
+        createErrorResponse(
+          'Mức giá không hợp lệ theo quy tắc bước giá tối thiểu',
+          ERROR_CODES.BID_BELOW_MINIMUM,
+          400
+        )
+      );
+    }
+
     return res.status(500).json(
       createErrorResponse('Lỗi đấu giá', ERROR_CODES.INTERNAL_ERROR, 500)
     );

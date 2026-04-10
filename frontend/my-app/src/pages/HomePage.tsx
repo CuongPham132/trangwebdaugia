@@ -113,7 +113,7 @@ const HomePage: React.FC = () => {
             <Alert
               type="error"
               showIcon
-              message={error}
+              title={error}
               action={<Button size="small" onClick={retry}>Thử lại</Button>}
             />
           </div>

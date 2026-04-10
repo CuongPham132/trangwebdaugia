@@ -61,10 +61,11 @@ const normalizeProfilePayload = (payload: unknown): UserProfile => {
 };
 
 const normalizeStatsPayload = (payload: unknown): { totalBids: number; totalSales: number } => {
-  const stats = isRecord(payload) ? payload : {};
+  const root = isRecord(payload) ? payload : {};
+  const stats = isRecord(root.stats) ? root.stats : root;
   return {
     totalBids: Math.max(0, toNumber(stats.total_bids, 0)),
-    totalSales: Math.max(0, toNumber(stats.total_sales, 0)),
+    totalSales: Math.max(0, toNumber(stats.completed_products, 0)),
   };
 };
 
@@ -397,26 +398,26 @@ export const ProfilePage: React.FC = () => {
                     <Statistic
                       title="👤 Vai trò"
                       value={user.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}
-                      valueStyle={{ color: '#1890ff', fontSize: '20px', fontWeight: 'bold' }}
+                      styles={{ content: { color: '#1890ff', fontSize: '20px', fontWeight: 'bold' } }}
                     />
                   </Col>
                   <Col span={24}>
                     <Statistic                      title="🏷️ Tổng đấu giá"
                       value={user.totalBids ?? 0}
-                      valueStyle={{ color: '#ff7a45', fontSize: '24px' }}
+                      styles={{ content: { color: '#ff7a45', fontSize: '24px' } }}
                     />
                   </Col>
                   <Col span={24}>
                     <Statistic
                       title="📦 Tổng bán"
                       value={user.totalSales ?? 0}
-                      valueStyle={{ color: '#52c41a', fontSize: '24px' }}
+                      styles={{ content: { color: '#52c41a', fontSize: '24px' } }}
                     />
                   </Col>
                   <Col span={24}>
                     <Statistic                      title="📅 Tham gia từ"
                       value={user.joinDate}
-                      valueStyle={{ color: '#666', fontSize: '16px' }}
+                      styles={{ content: { color: '#666', fontSize: '16px' } }}
                     />
                   </Col>
                 </Row>

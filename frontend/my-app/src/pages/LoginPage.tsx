@@ -61,7 +61,7 @@ export const LoginPage: React.FC = () => {
             {/* Error Alert */}
             {error && (
               <Alert
-                message={error}
+                title={error}
                 type="error"
                 showIcon
                 style={{ marginBottom: '16px' }}
@@ -167,7 +167,7 @@ export const LoginPage: React.FC = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              <Space direction="vertical" style={{ width: '100%' }}>
+              <Space orientation="vertical" style={{ width: '100%' }}>
                 <div>
                   <Link to="/forgot-password" style={{ color: '#ff7a45', fontWeight: 'bold', textDecoration: 'none' }}>
                     Quên mật khẩu?

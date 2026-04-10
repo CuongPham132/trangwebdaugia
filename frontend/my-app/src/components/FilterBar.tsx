@@ -56,7 +56,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       key: 'price',
       label: <span style={{ fontSize: '16px', fontWeight: 'bold' }}>💰 Khoảng Giá Thầu</span>,
       children: (
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Space orientation="vertical" style={{ width: '100%' }} size="middle">
           <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '6px' }}>
@@ -124,7 +124,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           }
           style={{ width: '100%' }}
         >
-          <Space direction="vertical" style={{ width: '100%' }}>
+          <Space orientation="vertical" style={{ width: '100%' }}>
             {AUCTION_STATUS_FILTER_OPTIONS.map((option, idx) => (
               <Radio
                 key={option.value}
@@ -182,12 +182,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           )}
         </div>
       }
-      bordered={false}
+      variant="borderless"
       style={{
         borderRadius: '8px',
         boxShadow: '0 1px 4px rgba(0, 0, 0, 0.08)',
       }}
-      bodyStyle={{ padding: '16px' }}
+      styles={{ body: { padding: '16px' } }}
     >
       <Collapse 
         items={items} 
@@ -197,7 +197,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
       <Divider style={{ margin: '16px 0' }} />
 
-      <Space style={{ width: '100%' }} direction="vertical" size="middle">
+      <Space style={{ width: '100%' }} orientation="vertical" size="middle">
         <Button
           block
           icon={<ClearOutlined />}

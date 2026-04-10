@@ -161,7 +161,7 @@ export const AdminDashboard: React.FC = () => {
                     <Statistic
                       value={card.value}
                       prefix={card.prefix}
-                      valueStyle={{ color: card.color, fontSize: '24px' }}
+                      styles={{ content: { color: card.color, fontSize: '24px' } }}
                     />
                   </div>
                   <div style={{ fontSize: '32px', opacity: 0.3 }}>{card.icon}</div>

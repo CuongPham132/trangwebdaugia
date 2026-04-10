@@ -92,7 +92,8 @@ async function countBidders(product_id) {
 // Tạo bid VÀ cập nhật giá trong một lệnh khóa (không bị race condition)
 async function createBidWithAtomicUpdate({ product_id, user_id, bid_amount, min_increment }) {
   try {
-    // BƯỚC 1: Tạo bid mới
+    // Trigger DB sẽ tự validate giá bid, cập nhật winner/current_price.
+    // BE chỉ cần insert bid.
     const bidResult = await sql.query`
       INSERT INTO bid (product_id, user_id, bid_amount)
       VALUES (${product_id}, ${user_id}, ${bid_amount})
@@ -102,34 +103,11 @@ async function createBidWithAtomicUpdate({ product_id, user_id, bid_amount, min_
       throw new Error('Không thể tạo bid');
     }
 
-    // BƯỚC 2: Update price với điều kiện ATOMIC
-    // Chỉ update nếu bid_amount > current_price
-    // Nếu có ai nhanh hơn, UPDATE này sẽ không ảnh hưởng
-    const priceUpdateResult = await sql.query`
-      UPDATE product
-      SET current_price = ${bid_amount}
-      WHERE product_id = ${product_id}
-      AND current_price < ${bid_amount}
-    `;
-
-    // Nếu rowsAffected = 0 → có ai nhanh tay hơn đặt giá cao hơn rồi
-    if (!priceUpdateResult.rowsAffected || priceUpdateResult.rowsAffected[0] === 0) {
-      // Bid vừa tạo vẫn được lưu, nhưng giá không update
-      // → Trả lỗi để client biết
-      return {
-        success: false,
-        reason: 'RACE_CONDITION',
-        message: 'Có ai đặt giá cao hơn rồi, hãy thử lại',
-        bid_created: true, // Bid đã được tạo
-      };
-    }
-
-    // ✅ Thành công
+    // ✅ Thành công, phần còn lại do trigger xử lý.
     return {
       success: true,
-      message: 'Bid placed and price updated',
+      message: 'Bid placed successfully',
       bid_created: true,
-      price_updated: true,
     };
 
   } catch (err) {

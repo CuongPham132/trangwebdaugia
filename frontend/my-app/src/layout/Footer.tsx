@@ -35,7 +35,7 @@ export const Footer: React.FC = () => {
         <Row gutter={[32, 32]} style={{ marginBottom: '32px' }}>
           {/* Brand */}
           <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
               <Link to="/" style={{ textDecoration: 'none' }}>
                 <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1890ff', margin: 0 }}>
                   🔨 AuctionHub
@@ -50,7 +50,7 @@ export const Footer: React.FC = () => {
           {/* Links Sections */}
           {footerSections.map((section) => (
             <Col xs={24} sm={12} md={6} key={section.title}>
-              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#262626', margin: 0 }}>
                   {section.title}
                 </h4>
@@ -76,14 +76,14 @@ export const Footer: React.FC = () => {
 
           {/* Newsletter */}
           <Col xs={24} sm={12} md={6}>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
               <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#262626', margin: 0 }}>
                 📰 Newsletter
               </h4>
               <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
                 Subscribe to get latest deals
               </p>
-              <Input.Group compact style={{ display: 'flex' }}>
+              <Space.Compact style={{ display: 'flex', width: '100%' }}>
                 <Input
                   placeholder="Your email"
                   type="email"
@@ -98,7 +98,7 @@ export const Footer: React.FC = () => {
                     setEmail('');
                   }}
                 />
-              </Input.Group>
+              </Space.Compact>
             </Space>
           </Col>
         </Row>

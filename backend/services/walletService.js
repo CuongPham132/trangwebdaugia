@@ -154,7 +154,7 @@ async function completeAuctionPayment(winner_id, seller_id, payment_amount, prod
         await walletModel.createTransaction(
             sellerWallet.wallet_id,
             payment_amount,
-            'payment',
+            'deposit',
             product_id,
             `Auction settlement - sold product #${product_id} to user #${winner_id}`
         );

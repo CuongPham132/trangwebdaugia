@@ -300,11 +300,11 @@ export const SellerPostProductPage: React.FC = () => {
         <Col xs={24} lg={16}>
           <Card
             title="Thông tin sản phẩm"
-            bordered={false}
+            variant="borderless"
             style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}
           >
             <Alert
-              message="💡 Hướng dẫn"
+              title="💡 Hướng dẫn"
               description="Điền đầy đủ thông tin sản phẩm để tăng khả năng được mua. Hình ảnh và mô tả chi tiết sẽ giúp thu hút nhiều người mua."
               type="info"
               showIcon
@@ -612,7 +612,7 @@ export const SellerPostProductPage: React.FC = () => {
         <Col xs={24} lg={8}>
           <Card
             title="💡 Mẹo để bán nhanh"
-            bordered={false}
+            variant="borderless"
             style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}
           >
             <ul style={{ paddingLeft: '20px', lineHeight: '1.8', color: '#666' }}>
@@ -627,7 +627,7 @@ export const SellerPostProductPage: React.FC = () => {
 
           <Card
             title="📋 Yêu cầu"
-            bordered={false}
+            variant="borderless"
             style={{ marginTop: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}
           >
             <ul style={{ paddingLeft: '20px', lineHeight: '1.8', color: '#666', fontSize: '14px' }}>

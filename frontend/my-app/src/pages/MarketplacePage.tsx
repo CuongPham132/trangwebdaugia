@@ -51,7 +51,11 @@ const getApiErrorPayload = (error: unknown): ApiErrorPayload => {
   }
 
   const data = responseData as Record<string, unknown>;
-  const minimum = Number(data.minimum_required);
+  const details =
+    typeof data.details === 'object' && data.details !== null
+      ? (data.details as Record<string, unknown>)
+      : undefined;
+  const minimum = Number(data.minimum_required ?? details?.minimum_required);
 
   return {
     message: typeof data.message === 'string' ? data.message : undefined,
@@ -299,7 +303,7 @@ export const MarketplacePage: React.FC = () => {
       setPlacingBid(true);
 
       const currentUserId = readCurrentUserId();
-      if (currentUserId && selectedProduct.seller_id === currentUserId) {
+      if (currentUserId && String(selectedProduct.seller_id) === currentUserId) {
         message.warning('Bạn không thể đấu giá sản phẩm của chính mình');
         return;
       }
@@ -316,8 +320,10 @@ export const MarketplacePage: React.FC = () => {
       }
 
       const topPayload = topBidResponse.data as Record<string, unknown>;
+      const topData = topPayload.data as Record<string, unknown> | undefined;
       const topBidValue = Number(
-        (topPayload.data as Record<string, unknown> | undefined)?.highest_bid ??
+        topData?.current_highest_bid ??
+          topData?.highest_bid ??
           topPayload.highest_bid ??
           latestProduct.highest_bid ??
           latestProduct.current_price
@@ -461,7 +467,7 @@ export const MarketplacePage: React.FC = () => {
         </section>
 
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 16px 40px' }}>
-          <Card style={{ ...sectionCardStyle, marginBottom: '16px' }} bodyStyle={{ padding: '16px' }}>
+          <Card style={{ ...sectionCardStyle, marginBottom: '16px' }} styles={{ body: { padding: '16px' } }}>
             <SearchBar onSearch={setSearchQuery} initialQuery={searchQuery} />
 
             <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -522,7 +528,7 @@ export const MarketplacePage: React.FC = () => {
             <Alert
               type="error"
               showIcon
-              message={error}
+              title={error}
               style={{ marginBottom: '16px' }}
               action={<Button size="small" onClick={retry}>Thử lại</Button>}
             />
@@ -610,7 +616,7 @@ export const MarketplacePage: React.FC = () => {
                 <Alert
                   type="info"
                   showIcon
-                  message="Không tìm thấy sản phẩm phù hợp với bộ lọc hiện tại"
+                  title="Không tìm thấy sản phẩm phù hợp với bộ lọc hiện tại"
                   description="Hãy xóa bớt điều kiện hoặc chuyển sang trạng thái khác để xem thêm phiên đấu giá."
                   action={<Button onClick={clearAllFilters}>Đặt lại bộ lọc</Button>}
                 />

@@ -12,7 +12,7 @@ interface Wallet {
   user_id: number;
   balance: number;
   locked_balance: number;
-  total_spent: number;
+  total_spent?: number;
   updated_at: string;
 }
 
@@ -124,10 +124,10 @@ export const WalletCard: React.FC<WalletCardProps> = ({ user_id, onShowHistory }
 
   return (
     <>
-      <Card className="wallet-card" bordered={false} style={{ borderRadius: '8px' }}>
+      <Card className="wallet-card" variant="borderless" style={{ borderRadius: '8px' }}>
         <Row gutter={[16, 16]} align="middle">
           <Col xs={24} sm={12}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
               <div className="wallet-header">
                 <WalletOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
                 <span style={{ marginLeft: '8px', fontSize: '18px', fontWeight: 'bold' }}>
@@ -155,7 +155,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({ user_id, onShowHistory }
           </Col>
 
           <Col xs={24} sm={12}>
-            <Space direction="vertical" style={{ width: '100%' }}>
+            <Space orientation="vertical" style={{ width: '100%' }}>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
@@ -188,7 +188,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({ user_id, onShowHistory }
         {wallet.total_spent > 0 && (
           <div style={{ marginTop: '16px', padding: '8px 12px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
             <span className="balance-label">Tổng đã chi:\n</span>
-            <span style={{ fontSize: '14px' }}>${wallet.total_spent.toFixed(2)}</span>
+            <span style={{ fontSize: '14px' }}>${(wallet.total_spent || 0).toFixed(2)}</span>
           </div>
         )}
       </Card>

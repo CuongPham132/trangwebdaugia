@@ -108,7 +108,7 @@ export const BidModal: React.FC<BidModalProps> = ({
                 )}
                 {errorCode === 'INSUFFICIENT_BALANCE' && (
                   <p className="text-xs text-red-600 mt-2">
-                    💰 <a href="/wallet/page">Nạp tiền vào ví</a> để tiếp tục đấu giá
+                    💰 <a href="/wallet">Nạp tiền vào ví</a> để tiếp tục đấu giá
                   </p>
                 )}
               </div>

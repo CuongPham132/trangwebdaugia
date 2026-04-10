@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import dayjs from 'dayjs';
 import {
   Row,
   Col,
@@ -208,8 +207,10 @@ export const ProductDetailPage: React.FC = () => {
         }
 
         const topPayload = topBidResponse.data as Record<string, unknown>;
+        const topData = topPayload.data as Record<string, unknown> | undefined;
         const topBidValue = Number(
-          (topPayload.data as Record<string, unknown> | undefined)?.highest_bid ??
+          topData?.current_highest_bid ??
+            topData?.highest_bid ??
             topPayload.highest_bid ??
             latestProduct.highest_bid ??
             latestProduct.current_price
@@ -257,7 +258,7 @@ export const ProductDetailPage: React.FC = () => {
         // Refetch wallet from backend to ensure data consistency
         const currentUserId = readCurrentUserId();
         if (currentUserId) {
-          dispatch(fetchWallet(Number(currentUserId)) as any);
+          dispatch(fetchWallet({ user_id: Number(currentUserId) }) as any);
         }
 
         message.success('Đặt giá thành công');
@@ -320,7 +321,7 @@ export const ProductDetailPage: React.FC = () => {
           <Alert
             type="error"
             showIcon
-            message="Không thể tải chi tiết sản phẩm. Vui lòng thử lại."
+            title="Không thể tải chi tiết sản phẩm. Vui lòng thử lại."
             action={
               <Button
                 onClick={() => {
@@ -489,7 +490,7 @@ export const ProductDetailPage: React.FC = () => {
                         title="💰 Giá khởi điểm"
                         value={product?.current_price || 0}
                         prefix="₫"
-                        valueStyle={{ color: '#ff7a45', fontSize: '20px' }}
+                        styles={{ content: { color: '#ff7a45', fontSize: '20px' } }}
                         formatter={(value) =>
                           (value as number).toLocaleString('vi-VN')
                         }
@@ -500,7 +501,7 @@ export const ProductDetailPage: React.FC = () => {
                         title="🔥 Giá cao nhất"
                         value={product?.highest_bid || product?.current_price || 0}
                         prefix="₫"
-                        valueStyle={{ color: '#d9534f', fontSize: '20px' }}
+                        styles={{ content: { color: '#d9534f', fontSize: '20px' } }}
                         formatter={(value) =>
                           (value as number).toLocaleString('vi-VN')
                         }
@@ -515,8 +516,8 @@ export const ProductDetailPage: React.FC = () => {
                 {/* Status & Time */}
                 <Row gutter={16} style={{ marginBottom: '16px' }}>
                   <Col xs={12}>
-                    <Card style={{ background: '#f0f0f0' }} bordered={false}>
-                      <Space direction="vertical" style={{ width: '100%' }}>
+                    <Card style={{ background: '#f0f0f0' }} variant="borderless">
+                      <Space orientation="vertical" style={{ width: '100%' }}>
                         <div>
                           <Tag
                             color={getAuctionStatusTagColor(product.status)}
@@ -531,7 +532,7 @@ export const ProductDetailPage: React.FC = () => {
                     </Card>
                   </Col>
                   <Col xs={12}>
-                    <Card style={{ background: '#f0f0f0' }} bordered={false}>
+                    <Card style={{ background: '#f0f0f0' }} variant="borderless">
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
                           ⏱️ Thời gian còn lại
@@ -549,7 +550,7 @@ export const ProductDetailPage: React.FC = () => {
                     background: '#f8f8f8',
                     border: '1px solid #e0e0e0',
                   }}
-                  bordered={false}
+                  variant="borderless"
                 >
                   <Space>
                     <Avatar size={48} style={{ background: '#ff7a45' }}>👤</Avatar>
@@ -593,7 +594,7 @@ export const ProductDetailPage: React.FC = () => {
 
                 {product.status !== 'active' && (
                   <Alert
-                    message={getAuctionInactiveMessage(product.status)}
+                    title={getAuctionInactiveMessage(product.status)}
                     type="warning"
                     style={{ marginTop: '12px' }}
                     showIcon
@@ -736,9 +737,9 @@ export const ProductDetailPage: React.FC = () => {
         okText="Đặt giá"
         cancelText="Hủy"
       >
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
+        <Space orientation="vertical" style={{ width: '100%' }} size="large">
           <Alert
-            message={`Giá hiện tại: ₫${product.highest_bid.toLocaleString('vi-VN')}`}
+            title={`Giá hiện tại: ₫${product.highest_bid.toLocaleString('vi-VN')}`}
             type="info"
             showIcon
           />
@@ -767,7 +768,7 @@ export const ProductDetailPage: React.FC = () => {
           </div>
 
           <Alert
-            message="⚠️ Khi bạn đặt giá, bạn cam kết sẽ mua sản phẩm này nếu trúng đấu giá"
+            title="⚠️ Khi bạn đặt giá, bạn cam kết sẽ mua sản phẩm này nếu trúng đấu giá"
             type="warning"
             showIcon
           />

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, Button, Spin, Avatar, Row, Col, Statistic, Input, Form, message, Popconfirm } from 'antd';
 import { LogoutOutlined, EditOutlined, SaveOutlined, CloseOutlined, UserOutlined, ShoppingOutlined, BarsOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '../layout';
 import { userAPI } from '../services/api';
 import { extractObjectData } from '../utils/apiResponse';
@@ -70,6 +71,7 @@ const normalizeStatsPayload = (payload: unknown): { totalBids: number; totalSale
 };
 
 export const ProfilePage: React.FC = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -435,10 +437,10 @@ export const ProfilePage: React.FC = () => {
                 style={{ borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <Button block icon={<ShoppingOutlined />}>
+                  <Button block icon={<ShoppingOutlined />} onClick={() => navigate('/wallet')}>
                     Xem mua hàng của tôi
                   </Button>
-                  <Button block icon={<BarsOutlined />}>
+                  <Button block icon={<BarsOutlined />} onClick={() => navigate('/seller-dashboard')}>
                     Xem bán hàng của tôi
                   </Button>
                 </div>

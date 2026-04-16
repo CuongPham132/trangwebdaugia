@@ -27,6 +27,9 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Environment files
+.env
+.env.*
+!.env.docker.example
 backend/.env
 backend/.env.local
 backend/.env.*.local

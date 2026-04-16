@@ -1,0 +1,9 @@
+* text=auto
+
+# Shell scripts must keep LF for Linux containers
+*.sh text eol=lf
+
+# Keep docker and yaml files normalized
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

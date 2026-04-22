@@ -144,7 +144,7 @@ export const productAPI = {
 export const bidAPI = {
   // POST
   placeBid: (data: { product_id: number; bid_amount: number }) =>
-    api.post('/bids', data),
+    api.post('/bids/place', data),
 
   // GET
   getHistory: (productId: number) =>
@@ -227,7 +227,32 @@ export const walletAPI = {
 };
 
 // ============================================
-// 8. HOME ROUTES (/api/home/)
+// 8. ORDER ROUTES (/api/orders/)
+// ============================================
+export const orderAPI = {
+  // Payment
+  paymentOrder: (data: { order_id: number }) =>
+    api.post('/orders/pay', data),
+
+  // Get order by ID
+  getOrder: (orderId: number) =>
+    api.get(`/orders/${orderId}`),
+
+  // Get all orders of current user
+  getMyOrders: () =>
+    api.get('/orders/my-orders'),
+
+  // Update shipping info
+  updateShipping: (orderId: number, data: {
+    shipping_name: string;
+    shipping_phone: string;
+    shipping_address: string;
+  }) =>
+    api.put(`/orders/${orderId}/shipping`, data),
+};
+
+// ============================================
+// 9. HOME ROUTES (/api/home/)
 // ============================================
 export const homeAPI = {
   getHome: () => api.get('/home'),

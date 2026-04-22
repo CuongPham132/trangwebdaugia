@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Menu, Button, Dropdown, Input, Space, Badge, Avatar, Card, Spin, Tooltip } from 'antd';
-import { SearchOutlined, LoginOutlined, UserOutlined, LogoutOutlined, ShoppingOutlined, BellOutlined, HomeOutlined, DashboardOutlined, WalletOutlined } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { SearchOutlined, LoginOutlined, UserOutlined, LogoutOutlined, ShoppingOutlined, BellOutlined, HomeOutlined, DashboardOutlined, WalletOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearNotifications as clearAllNotifications } from '../utils/notifications';
 import { logoutUser } from '../stores/thunks';
@@ -11,6 +11,7 @@ import type { MenuProps } from 'antd';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
   const { isAuthenticated, user } = useSelector(
     (state: RootState) => state.auth
@@ -19,6 +20,17 @@ export const Header: React.FC = () => {
   const [notifications, setNotifications] = useState<Array<{id: string; message: string; type: 'success' | 'info' | 'warning'; timestamp: number}>>([]);
   const [wallet, setWallet] = useState<{wallet_id: number; balance: number; locked_balance: number} | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
+
+  // Determine active menu key from current location
+  const activeMenuKey = useMemo(() => {
+    const path = location.pathname;
+    if (path === '/') return '/';
+    if (path.startsWith('/marketplace')) return '/marketplace';
+    if (path.startsWith('/seller')) return '/seller';
+    if (path.startsWith('/wallet')) return '/wallet';
+    if (path.startsWith('/orders')) return '/orders';
+    return '/';
+  }, [location.pathname]);
 
   // Load notifications from localStorage on mount
   React.useEffect(() => {
@@ -97,6 +109,13 @@ export const Header: React.FC = () => {
       icon: <ShoppingOutlined />,
       label: <Link to="/marketplace">Duyệt đấu giá</Link>,
     },
+    ...(isAuthenticated ? [
+      {
+        key: '/orders',
+        icon: <ShoppingCartOutlined />,
+        label: <Link to="/orders">Đơn hàng</Link>,
+      },
+    ] : []),
     {
       key: '/seller',
       icon: <ShoppingOutlined />,
@@ -151,7 +170,7 @@ export const Header: React.FC = () => {
     <header
       style={{
         backgroundColor: '#fff',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
         padding: '0 24px',
         position: 'sticky',
         top: 0,
@@ -190,6 +209,8 @@ export const Header: React.FC = () => {
           flex: 1,
           backgroundColor: 'transparent',
         }}
+        selectedKeys={[activeMenuKey]}
+        theme="light"
       />
 
       {/* Wallet Display - Thay cho Search Bar */}
@@ -201,31 +222,34 @@ export const Header: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              padding: '12px 16px',
+              padding: '10px 16px',
               backgroundColor: '#f0f5ff',
               borderRadius: '8px',
               border: '1px solid #d9e8ff',
               cursor: 'pointer',
               textDecoration: 'none',
               transition: 'all 0.3s',
+              minHeight: '40px',
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLElement).style.backgroundColor = '#e6f7ff';
               (e.currentTarget as HTMLElement).style.borderColor = '#91d5ff';
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(24, 144, 255, 0.15)';
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLElement).style.backgroundColor = '#f0f5ff';
               (e.currentTarget as HTMLElement).style.borderColor = '#d9e8ff';
+              (e.currentTarget as HTMLElement).style.boxShadow = 'none';
             }}
           >
-            <WalletOutlined style={{ fontSize: '18px', color: '#1890ff' }} />
+            <WalletOutlined style={{ fontSize: '18px', color: '#1890ff', flexShrink: 0 }} />
             {walletLoading ? (
               <Spin size="small" />
             ) : wallet ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <span style={{ fontSize: '12px', color: '#666' }}>Số dư</span>
-                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
-                  ${wallet.balance.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '12px', color: '#666', whiteSpace: 'nowrap' }}>Số dư:</span>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#1890ff', whiteSpace: 'nowrap' }}>
+                  {wallet.balance.toLocaleString('vi-VN')}₫
                 </span>
               </div>
             ) : (

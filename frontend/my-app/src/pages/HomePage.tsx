@@ -35,7 +35,7 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
         <p style={{ color: '#475569', margin: '6px 0 0' }}>{subtitle}</p>
       </div>
       {actionLabel && onAction ? (
-        <Button type="default" onClick={onAction} icon={<ArrowRightOutlined />}>
+        <Button type="primary" onClick={onAction} icon={<ArrowRightOutlined />} style={{ fontWeight: 600 }}>
           {actionLabel}
         </Button>
       ) : null}
@@ -144,7 +144,7 @@ const HomePage: React.FC = () => {
           </div>
         </section>
 
-        <section style={{ background: 'white', borderTop: '1px solid #e2e8f0', padding: '40px 16px' }}>
+        <section style={{ background: 'white', borderTop: '1px solid #e2e8f0', padding: '48px 16px', minHeight: '600px' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <SectionHeader
               title="Sản phẩm đang đấu giá"
@@ -160,7 +160,7 @@ const HomePage: React.FC = () => {
           </div>
         </section>
 
-        <section style={{ background: '#fef7ed', borderTop: '1px solid #fed7aa', padding: '40px 16px' }}>
+        <section style={{ background: '#fef7ed', borderTop: '1px solid #fed7aa', padding: '48px 16px', minHeight: '600px' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <SectionHeader
               title="Sắp kết thúc"
@@ -176,7 +176,7 @@ const HomePage: React.FC = () => {
           </div>
         </section>
 
-        <section style={{ background: 'white', borderTop: '1px solid #e2e8f0', padding: '40px 16px' }}>
+        <section style={{ background: 'white', borderTop: '1px solid #e2e8f0', padding: '48px 16px', minHeight: '600px' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <SectionHeader
               title="Sắp diễn ra"

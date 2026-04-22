@@ -34,22 +34,29 @@ async function getWallet(user_id) {
  */
 async function getOrCreateWallet(user_id) {
     try {
+        logger.info('getOrCreateWallet called', { user_id });
+        
         // Try to get existing wallet
         let wallet = await getWallet(user_id);
+        logger.info('Wallet fetch result', { user_id, found: !!wallet });
         
         if (!wallet) {
+            logger.info('Wallet not found, creating new one', { user_id });
+            
             // Create new wallet
-            await sql.query`
+            const insertResult = await sql.query`
                 INSERT INTO wallet (user_id, balance, locked_balance, total_spent)
                 VALUES (${user_id}, 0, 0, 0)
             `;
             
+            logger.info('Wallet created', { user_id, rowsAffected: insertResult.rowsAffected });
             wallet = await getWallet(user_id);
         }
         
+        logger.info('getOrCreateWallet success', { user_id, wallet });
         return wallet;
     } catch (error) {
-        logger.error('Error getting or creating wallet', { user_id, error: error.message });
+        logger.error('Error getting or creating wallet', { user_id, error: error.message, code: error.code });
         throw error;
     }
 }
@@ -186,12 +193,10 @@ async function addBalance(wallet_id, amount) {
  */
 async function getTransactionHistory(wallet_id, limit = 50) {
     try {
-        const request = new sql.Request();
-        request.input('wallet_id', sql.Int, wallet_id);
-        request.input('limit', sql.Int, Math.min(limit, 500));
+        logger.info('getTransactionHistory called', { wallet_id, limit });
         
-        const result = await request.query(`
-            SELECT TOP (@limit)
+        const result = await sql.query`
+            SELECT TOP (${Math.min(limit, 500)})
                 transaction_id,
                 wallet_id,
                 amount,
@@ -200,13 +205,18 @@ async function getTransactionHistory(wallet_id, limit = 50) {
                 description,
                 created_at
             FROM transaction_history
-            WHERE wallet_id = @wallet_id
+            WHERE wallet_id = ${wallet_id}
             ORDER BY created_at DESC
-        `);
+        `;
         
+        logger.info('Transaction history fetched', { wallet_id, count: result.recordset.length });
         return result.recordset;
     } catch (error) {
-        logger.error('Error fetching transaction history', { wallet_id, error: error.message });
+        logger.error('Error fetching transaction history', { 
+            wallet_id, 
+            error: error.message,
+            code: error.code 
+        });
         throw error;
     }
 }

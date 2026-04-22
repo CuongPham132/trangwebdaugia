@@ -1,7 +1,9 @@
-const { createBid, getBidHistory, getHighestBid, getUserBids, getBidStatistics, countBidders, createBidWithAtomicUpdate, getCurrentPrice, getBidById, deleteBid } = require('../models/bidModel');
+const { createBid, getBidHistory, getHighestBid, getUserBids, getBidStatistics, countBidders, createBidWithAtomicUpdate, getCurrentPrice, getBidById, cancelBid, deleteBid } = require('../models/bidModel');
 const { getProductById, updateProductPrice } = require('../models/productModel');
 const { extendAuctionTime } = require('../models/auctionModel');
 const walletService = require('../services/walletService');
+const transactionService = require('../services/transactionService');
+const { sql } = require('../config/db');
 const logger = require('../services/logger');
 const { isAuctionStillOpen, isAuctionStarted, NETWORK_BUFFER_SECONDS } = require('../utils/timeUtils');
 const { ERROR_CODES, createSuccessResponse, createErrorResponse } = require('../utils/errorHandler');
@@ -22,7 +24,7 @@ async function placeBid(req, res) {
     if (bid_amount <= 0) {
       return res.status(400).json(
         createErrorResponse('Mức giá phải lớn hơn 0', ERROR_CODES.INVALID_INPUT, 400)
-      );
+      );  
     }
 
     // Lấy thông tin sản phẩm
@@ -150,17 +152,47 @@ async function placeBid(req, res) {
       min_increment: product.min_increment,
     });
 
-    // ⭐ LOCK BALANCE: Sau khi bid thành công, lock tiền của user
+    // ⭐ LOCK BALANCE WITH TRANSACTION: 
+    // Lock balance + create transaction log atomically (Auto rollback if error)
     try {
-      await walletService.lockBalanceForBid(user_id, bid_amount, product_id);
-      logger.success('Balance locked for bid', { user_id, bid_amount, product_id });
+      await transactionService.lockBalanceForBid(
+        user_id, 
+        bid_amount, 
+        `bid_product_${product_id}`
+      );
+      logger.success('Balance locked with transaction', { user_id, bid_amount, product_id });
     } catch (walletError) {
-      logger.error('Failed to lock balance after bid', { user_id, bid_amount, error: walletError.message });
-      // Note: Bid đã được tạo, chỉ lock balance failed. Frontend nên báo cho user check lại wallet
+      logger.error('Failed to lock balance (Transaction rollback triggered)', { 
+        user_id, 
+        bid_amount, 
+        error: walletError.message,
+        note: 'Balance was NOT locked due to transaction rollback'
+      });
+      return res.status(500).json(
+        createErrorResponse(
+          'Lỗi lock tiền. Vui lòng thử lại sau. Tiền của bạn KHÔNG bị trừ.',
+          ERROR_CODES.WALLET_ERROR,
+          500
+        )
+      );
     }
 
     // ✅ Thành công
     logger.success('Bid placed (atomic)', { product_id, user_id, bid_amount });
+
+    // ⭐ EMIT SOCKET EVENT: Broadcast new bid to all users viewing this product
+    if (global.io) {
+      global.io.to(`product-${product_id}`).emit('new-bid', {
+        product_id,
+        bid_id: bidResult.bid_id,
+        user_id,
+        bidder_username: req.user?.username || 'Anonymous',
+        bid_amount,
+        bid_time: new Date(),
+        is_winning: bidResult.is_winning,
+      });
+      logger.info('Bid event emitted', { product_id, bid_amount });
+    }
 
     res.status(201).json(
       createSuccessResponse({
@@ -317,21 +349,21 @@ async function retractBid(req, res) {
       );
     }
 
-    // Thực hiện xóa bid
-    const deleteResult = await deleteBid(bid_id);
+    // Thực hiện hủy bid (soft delete: set is_cancelled = 1)
+    const cancelResult = await cancelBid(bid_id);
 
-    if (!deleteResult.success) {
-      // Xác định lý do không thể xóa
+    if (!cancelResult.success) {
+      // Xác định lý do không thể hủy
       let message = 'Không thể hủy bid';
       let code = ERROR_CODES.OPERATION_FAILED;
 
-      if (deleteResult.reason === 'WINNING_BID_CANNOT_BE_DELETED') {
+      if (cancelResult.reason === 'WINNING_BID_CANNOT_BE_CANCELLED') {
         message = 'Không thể hủy bid vì bạn đang thắng đấu giá';
         code = ERROR_CODES.WINNING_BID_CANNOT_DELETE;
-      } else if (deleteResult.reason === 'AUCTION_ENDED_CANNOT_DELETE') {
+      } else if (cancelResult.reason === 'AUCTION_ENDED_CANNOT_CANCEL') {
         message = 'Không thể hủy bid vì đấu giá đã kết thúc';
         code = ERROR_CODES.AUCTION_ENDED;
-      } else if (deleteResult.reason === 'BID_NOT_FOUND') {
+      } else if (cancelResult.reason === 'BID_NOT_FOUND') {
         message = 'Bid không tồn tại';
         code = ERROR_CODES.BID_NOT_FOUND;
       }
@@ -341,13 +373,64 @@ async function retractBid(req, res) {
       );
     }
 
-    // Nếu bid được xóa thành công, hoàn lại tiền cho user
-    try {
-      await walletService.unlockBalanceFromBid(user_id, bid.bid_amount, bid.product_id);
-      logger.success('Bid retracted and balance unlocked', { bid_id, user_id, bid_amount: bid.bid_amount });
-    } catch (walletError) {
-      logger.warn('Failed to unlock balance for retracted bid', { bid_id, user_id, error: walletError.message });
-      // Note: Bid đã bị xóa, nhưng unlock balance failed. Cần manual check
+    // Nếu bid được hủy thành công, hoàn lại tiền cho user
+    // ⭐ RETRY LOGIC with rollback on failure
+    let unlockSuccess = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+
+    while (retryCount < MAX_RETRIES && !unlockSuccess) {
+      try {
+        await walletService.unlockBalanceFromBid(user_id, bid.bid_amount, bid.product_id);
+        logger.success('Bid cancelled and balance unlocked', { bid_id, user_id, bid_amount: bid.bid_amount });
+        unlockSuccess = true;
+      } catch (walletError) {
+        retryCount++;
+        logger.warn('Failed to unlock balance (retry ' + retryCount + '/' + MAX_RETRIES + ')', { 
+          bid_id, 
+          user_id, 
+          error: walletError.message 
+        });
+        
+        // Wait 500ms before retry
+        if (retryCount < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    }
+
+    // ⭐ If all retries failed, rollback bid cancellation
+    if (!unlockSuccess) {
+      logger.error('All unlock attempts failed - rolling back bid cancellation', { bid_id, user_id });
+      
+      try {
+        // Restore is_cancelled = 0
+        await sql.query`UPDATE bid SET is_cancelled = 0 WHERE bid_id = ${bid_id}`;
+        logger.success('Bid cancellation rolled back', { bid_id });
+        
+        return res.status(500).json(
+          createErrorResponse(
+            'Lỗi hoàn lại tiền. Bid hủy đã được khôi phục. Vui lòng thử lại sau.',
+            ERROR_CODES.WALLET_ERROR,
+            500
+          )
+        );
+      } catch (rollbackErr) {
+        logger.error('CRITICAL: Rollback failed - bid stuck in cancelled state', { 
+          bid_id, 
+          user_id, 
+          error: rollbackErr.message 
+        });
+        // TODO: Send admin notification - manual intervention needed
+        
+        return res.status(500).json(
+          createErrorResponse(
+            'Lỗi nghiêm trọng. Admin đã được thông báo. Vui lòng liên hệ support.',
+            ERROR_CODES.OPERATION_FAILED,
+            500
+          )
+        );
+      }
     }
 
     res.json(

@@ -48,28 +48,38 @@ async function getTransactionHistory(req, res) {
     user_id = Number(user_id);
     const { limit = 50 } = req.query;
 
+    logger.info('getTransactionHistory called', { user_id, limit });
+
     if (!user_id || !Number.isFinite(user_id) || user_id <= 0) {
       return res.status(400).json(
         createErrorResponse('User ID không hợp lệ', ERROR_CODES.INVALID_INPUT, 400)
       );
     }
 
+    logger.info('Fetching wallet', { user_id });
     const wallet = await walletModel.getWallet(user_id);
 
     if (!wallet) {
+      logger.warn('Wallet not found', { user_id });
       return res.status(404).json(
         createErrorResponse('Ví không tồn tại', ERROR_CODES.USER_NOT_FOUND, 404)
       );
     }
 
+    logger.info('Fetching transactions', { wallet_id: wallet.wallet_id, limit });
     const transactions = await walletModel.getTransactionHistory(
       wallet.wallet_id,
       Math.min(parseInt(limit) || 50, 500)
     );
 
+    logger.success('Transaction history retrieved', { user_id, count: transactions.length });
     res.status(200).json(createSuccessResponse(transactions));
   } catch (error) {
-    logger.error('Error in getTransactionHistory', { error: error.message });
+    logger.error('Error in getTransactionHistory', { 
+      error: error.message,
+      code: error.code,
+      user_id: req.params.user_id
+    });
     res.status(500).json(createErrorResponse('Lỗi tải lịch sử giao dịch', ERROR_CODES.DATABASE_ERROR, 500));
   }
 }

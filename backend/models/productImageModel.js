@@ -10,6 +10,17 @@ async function getImagesByProductId(product_id) {
   return result.recordset;
 }
 
+// ⭐ FIX N+1: Lấy hình ảnh cho nhiều sản phẩm cùng lúc (1 query thay vì N query)
+async function getImagesByProductIds(product_ids) {
+  if (!product_ids || product_ids.length === 0) return [];
+  
+  const placeholders = product_ids.map((_, i) => `${product_ids[i]}`).join(',');
+  const queryStr = `SELECT * FROM product_image WHERE product_id IN (${placeholders}) ORDER BY product_id, is_main DESC, is_primary DESC, created_at ASC`;
+  
+  const result = await sql.query(queryStr);
+  return result.recordset;
+}
+
 // Lấy hình ảnh chính của sản phẩm
 async function getPrimaryImage(product_id) {
   const result = await sql.query`
@@ -48,6 +59,7 @@ async function deleteProductImage(image_id) {
 
 module.exports = {
   getImagesByProductId,
+  getImagesByProductIds,
   getPrimaryImage,
   addProductImage,
   setPrimaryImage,

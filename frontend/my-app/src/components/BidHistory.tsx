@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { bidAPI } from '../services/api';
+import { connectSocket, joinProductRoom, leaveProductRoom, onNewBid, offNewBid } from '../services/socketService';
 
 interface BidHistory {
   bid_id: number;
@@ -45,6 +46,36 @@ export const BidHistory: React.FC<BidHistoryProps> = ({ productId }) => {
     };
 
     fetchBidHistory();
+
+    // ⭐ Socket.io Setup
+    connectSocket();
+    joinProductRoom(productId);
+
+    // ⭐ Listen for new bids
+    const handleNewBid = (newBid: any) => {
+      console.log('📝 New bid received:', newBid);
+      setBids((prevBids) => {
+        // Add new bid to the beginning of the list
+        const updatedBids = [
+          {
+            bid_id: newBid.bid_id,
+            bidder_username: newBid.bidder_username,
+            bid_amount: newBid.bid_amount,
+            bid_time: newBid.bid_time,
+          },
+          ...prevBids,
+        ];
+        return updatedBids;
+      });
+    };
+
+    onNewBid(handleNewBid);
+
+    // Cleanup
+    return () => {
+      leaveProductRoom(productId);
+      offNewBid();
+    };
   }, [productId]);
 
   if (loading) {

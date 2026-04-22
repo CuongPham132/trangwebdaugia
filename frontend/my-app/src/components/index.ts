@@ -10,6 +10,8 @@ export { BidModal } from './BidModal';
 export { BidHistory } from './BidHistory';
 export { SellerDashboard } from './SellerDashboard';
 export { ProtectedRoute } from './ProtectedRoute';
+export { OrderPayment } from './OrderPayment';
+export { OrderHistory } from './OrderHistory';
 
 // Types
 export type { Product } from './ProductCard';

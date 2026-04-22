@@ -11,9 +11,15 @@ const {
   deleteProduct,
   updateProductPrice,
 } = require('../models/productModel');
-const { getImagesByProductId, addProductImage } = require('../models/productImageModel');
+const { getImagesByProductId, getImagesByProductIds, addProductImage } = require('../models/productImageModel');
+const { hasBids } = require('../models/bidModel');
 const logger = require('../services/logger');
 const { ERROR_CODES, createSuccessResponse, createErrorResponse } = require('../utils/errorHandler');
+
+// Auction configuration from environment
+const AUCTION_MAX_DURATION_MINUTES = parseInt(process.env.AUCTION_MAX_DURATION_MINUTES || '30');
+const AUCTION_DEFAULT_MIN_INCREMENT = parseInt(process.env.AUCTION_DEFAULT_MIN_INCREMENT || '10000');
+const AUCTION_MIN_DURATION_MINUTES = parseInt(process.env.AUCTION_MIN_DURATION_MINUTES || '30');
 
 function toAbsoluteImageUrl(req, imageUrl) {
   if (!imageUrl) return imageUrl;
@@ -33,13 +39,19 @@ async function listActiveProducts(req, res) {
   try {
     const products = await getAllProducts();
     
-    // Thêm hình ảnh cho từng sản phẩm
-    const productsWithImages = await Promise.all(
-      products.map(async (product) => {
-        const images = await getImagesByProductId(product.product_id);
-        return { ...product, images: normalizeImages(req, images) };
-      })
-    );
+    // Batch query: Lấy tất cả hình ảnh trong 1 lần thay vì N lần
+    const product_ids = products.map(p => p.product_id);
+    const allImages = await getImagesByProductIds(product_ids);
+    const imagesByProductId = {};
+    allImages.forEach(img => {
+      if (!imagesByProductId[img.product_id]) imagesByProductId[img.product_id] = [];
+      imagesByProductId[img.product_id].push(img);
+    });
+    
+    const productsWithImages = products.map(product => ({
+      ...product,
+      images: normalizeImages(req, imagesByProductId[product.product_id] || [])
+    }));
     
     res.json(
       createSuccessResponse(productsWithImages, 'Lấy danh sách sản phẩm thành công')
@@ -57,12 +69,19 @@ async function listUpcomingProducts(req, res) {
   try {
     const products = await getUpcomingProducts();
     
-    const productsWithImages = await Promise.all(
-      products.map(async (product) => {
-        const images = await getImagesByProductId(product.product_id);
-        return { ...product, images: normalizeImages(req, images) };
-      })
-    );
+    // Batch query: Lấy tất cả hình ảnh trong 1 lần
+    const product_ids = products.map(p => p.product_id);
+    const allImages = await getImagesByProductIds(product_ids);
+    const imagesByProductId = {};
+    allImages.forEach(img => {
+      if (!imagesByProductId[img.product_id]) imagesByProductId[img.product_id] = [];
+      imagesByProductId[img.product_id].push(img);
+    });
+    
+    const productsWithImages = products.map(product => ({
+      ...product,
+      images: normalizeImages(req, imagesByProductId[product.product_id] || [])
+    }));
     
     res.json(
       createSuccessResponse(productsWithImages, 'Lấy danh sách sản phẩm sắp diễn ra thành công')
@@ -114,12 +133,19 @@ async function searchProduct(req, res) {
     
     const products = await searchProducts(keyword);
     
-    const productsWithImages = await Promise.all(
-      products.map(async (product) => {
-        const images = await getImagesByProductId(product.product_id);
-        return { ...product, images: normalizeImages(req, images) };
-      })
-    );
+    // Batch query: Lấy tất cả hình ảnh trong 1 lần
+    const product_ids = products.map(p => p.product_id);
+    const allImages = await getImagesByProductIds(product_ids);
+    const imagesByProductId = {};
+    allImages.forEach(img => {
+      if (!imagesByProductId[img.product_id]) imagesByProductId[img.product_id] = [];
+      imagesByProductId[img.product_id].push(img);
+    });
+    
+    const productsWithImages = products.map(product => ({
+      ...product,
+      images: normalizeImages(req, imagesByProductId[product.product_id] || [])
+    }));
     
     res.json(
       createSuccessResponse(productsWithImages, 'Tìm kiếm sản phẩm thành công')
@@ -139,12 +165,19 @@ async function getProductsByCateg(req, res) {
     
     const products = await getProductsByCategory(category_id);
     
-    const productsWithImages = await Promise.all(
-      products.map(async (product) => {
-        const images = await getImagesByProductId(product.product_id);
-        return { ...product, images: normalizeImages(req, images) };
-      })
-    );
+    // Batch query: Lấy tất cả hình ảnh trong 1 lần
+    const product_ids = products.map(p => p.product_id);
+    const allImages = await getImagesByProductIds(product_ids);
+    const imagesByProductId = {};
+    allImages.forEach(img => {
+      if (!imagesByProductId[img.product_id]) imagesByProductId[img.product_id] = [];
+      imagesByProductId[img.product_id].push(img);
+    });
+    
+    const productsWithImages = products.map(product => ({
+      ...product,
+      images: normalizeImages(req, imagesByProductId[product.product_id] || [])
+    }));
     
     res.json(
       createSuccessResponse(productsWithImages, 'Lấy sản phẩm theo danh mục thành công')
@@ -164,12 +197,19 @@ async function getMyProducts(req, res) {
     
     const products = await getSellerProducts(seller_id);
     
-    const productsWithImages = await Promise.all(
-      products.map(async (product) => {
-        const images = await getImagesByProductId(product.product_id);
-        return { ...product, images: normalizeImages(req, images) };
-      })
-    );
+    // Batch query: Lấy tất cả hình ảnh trong 1 lần
+    const product_ids = products.map(p => p.product_id);
+    const allImages = await getImagesByProductIds(product_ids);
+    const imagesByProductId = {};
+    allImages.forEach(img => {
+      if (!imagesByProductId[img.product_id]) imagesByProductId[img.product_id] = [];
+      imagesByProductId[img.product_id].push(img);
+    });
+    
+    const productsWithImages = products.map(product => ({
+      ...product,
+      images: normalizeImages(req, imagesByProductId[product.product_id] || [])
+    }));
     
     res.json(
       createSuccessResponse(productsWithImages, 'Lấy danh sách sản phẩm của bạn thành công')
@@ -189,14 +229,6 @@ async function createNewProduct(req, res) {
     
     const { title, description, start_price, min_increment, start_time, end_time, category_id } = req.body;
     
-    // DEBUG LOG
-    console.log('🐛 [CREATE PRODUCT DEBUG]', {
-      start_time,
-      end_time,
-      start_time_type: typeof start_time,
-      end_time_type: typeof end_time,
-    });
-    
     // Validate
     if (!title || !start_price || !start_time || !category_id) {
       return res.status(400).json(
@@ -210,7 +242,7 @@ async function createNewProduct(req, res) {
       );
     }
     
-    // Auto-calculate end_time = start_time + 30 minutes
+    // Auto-calculate end_time based on config
     // Use moment-timezone to parse Vietnam local time properly
     const startTimeFormat = 'YYYY-MM-DD HH:mm:ss.SSS';
     const startTimeMoment = moment.tz(start_time, startTimeFormat, 'Asia/Ho_Chi_Minh');
@@ -221,7 +253,7 @@ async function createNewProduct(req, res) {
       );
     }
     
-    const maxEndTimeMoment = startTimeMoment.clone().add(30, 'minutes'); // +30 phút
+    const maxEndTimeMoment = startTimeMoment.clone().add(AUCTION_MAX_DURATION_MINUTES, 'minutes');
     
     let finalEndTimeMoment;
     if (end_time) {
@@ -236,23 +268,22 @@ async function createNewProduct(req, res) {
       finalEndTimeMoment = maxEndTimeMoment;
     }
     
-    // DEBUG LOG 2
-    console.log('🐛 [TIME CALCULATION]', {
-      startTime: startTimeMoment.format('YYYY-MM-DD HH:mm:ss'),
-      maxEndTime: maxEndTimeMoment.format('YYYY-MM-DD HH:mm:ss'),
-      finalEndTime: finalEndTimeMoment.format('YYYY-MM-DD HH:mm:ss'),
-      startTime_vs_finalEndTime: startTimeMoment >= finalEndTimeMoment ? 'ERROR' : 'OK',
-    });
-    
-    // Nếu end_time quá xa (> 30 phút), giới hạn lại
-    if (finalEndTimeMoment > maxEndTimeMoment) {
-      finalEndTimeMoment = maxEndTimeMoment;
+    // ⭐ VALIDATION: Kiểm tra thời gian hợp lệ
+    if (!startTimeMoment.isSameOrBefore(finalEndTimeMoment)) {
+      return res.status(400).json(
+        createErrorResponse('Thời gian kết thúc phải sau hoặc bằng thời gian bắt đầu', ERROR_CODES.INVALID_INPUT, 400)
+      );
     }
     
-    if (startTimeMoment >= finalEndTimeMoment) {
+    const durationMinutes = finalEndTimeMoment.diff(startTimeMoment, 'minutes');
+    if (durationMinutes < AUCTION_MIN_DURATION_MINUTES) {
       return res.status(400).json(
-        createErrorResponse('Thời gian kết thúc phải sau thời gian bắt đầu', ERROR_CODES.INVALID_INPUT, 400)
+        createErrorResponse(`Phiên đấu giá phải kéo dài tối thiểu ${AUCTION_MIN_DURATION_MINUTES} phút`, ERROR_CODES.INVALID_INPUT, 400)
       );
+    }
+    
+    if (durationMinutes > AUCTION_MAX_DURATION_MINUTES) {
+      finalEndTimeMoment = maxEndTimeMoment;
     }
     
     // Format times for DB (already in Vietnam time, just format as string)
@@ -269,7 +300,7 @@ async function createNewProduct(req, res) {
       title,
       description,
       start_price,
-      min_increment: min_increment || 10000,
+      min_increment: min_increment || AUCTION_DEFAULT_MIN_INCREMENT,
       start_time: formattedStartTime,
       end_time: formattedEndTime,
       seller_id,
@@ -320,12 +351,44 @@ async function updateProductInfo(req, res) {
       );
     }
     
+    // ⭐ VALIDATION: Kiểm tra thời gian nếu update
+    if (start_time || end_time) {
+      const startTimeFormat = 'YYYY-MM-DD HH:mm:ss.SSS';
+      const effectiveStart = start_time ? moment.tz(start_time, startTimeFormat, 'Asia/Ho_Chi_Minh') : moment.tz(product.start_time, startTimeFormat, 'Asia/Ho_Chi_Minh');
+      const effectiveEnd = end_time ? moment.tz(end_time, startTimeFormat, 'Asia/Ho_Chi_Minh') : moment.tz(product.end_time, startTimeFormat, 'Asia/Ho_Chi_Minh');
+      
+      if (!effectiveStart.isValid() || !effectiveEnd.isValid()) {
+        return res.status(400).json(
+          createErrorResponse('Định dạng thời gian không hợp lệ (YYYY-MM-DD HH:mm:ss.SSS)', ERROR_CODES.INVALID_INPUT, 400)
+        );
+      }
+      
+      if (!effectiveStart.isSameOrBefore(effectiveEnd)) {
+        return res.status(400).json(
+          createErrorResponse('Thời gian kết thúc phải sau hoặc bằng thời gian bắt đầu', ERROR_CODES.INVALID_INPUT, 400)
+        );
+      }
+      
+      const durationMinutes = effectiveEnd.diff(effectiveStart, 'minutes');
+      if (durationMinutes < AUCTION_MIN_DURATION_MINUTES) {
+        return res.status(400).json(
+          createErrorResponse(`Phiên đấu giá phải kéo dài tối thiểu ${AUCTION_MIN_DURATION_MINUTES} phút`, ERROR_CODES.INVALID_INPUT, 400)
+        );
+      }
+      
+      if (durationMinutes > AUCTION_MAX_DURATION_MINUTES) {
+        return res.status(400).json(
+          createErrorResponse(`Phiên đấu giá không thể quá ${AUCTION_MAX_DURATION_MINUTES} phút`, ERROR_CODES.INVALID_INPUT, 400)
+        );
+      }
+    }
+    
     const updates = {};
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
     if (status !== undefined) updates.status = status;
-    if (start_time !== undefined) updates.start_time = start_time;
-    if (end_time !== undefined) updates.end_time = end_time;
+    if (start_time !== undefined) updates.start_time = moment.tz(start_time, 'YYYY-MM-DD HH:mm:ss.SSS', 'Asia/Ho_Chi_Minh').format('YYYY-MM-DD HH:mm:ss');
+    if (end_time !== undefined) updates.end_time = moment.tz(end_time, 'YYYY-MM-DD HH:mm:ss.SSS', 'Asia/Ho_Chi_Minh').format('YYYY-MM-DD HH:mm:ss');
     
     await updateProduct(product_id, updates);
 
@@ -363,8 +426,19 @@ async function deleteProductItem(req, res) {
       );
     }
     
-    // Chỉ xóa được nếu chưa có ai đặt giá
-    // Có thể thêm logic kiểm tra bid ở đây
+    // ⭐ CHECK: Xóa chỉ khi chưa có bid hoặc không đang active
+    const productHasBids = await hasBids(product_id);
+    if (productHasBids) {
+      return res.status(400).json(
+        createErrorResponse('Không thể xóa sản phẩm có bàn đấu giá', ERROR_CODES.INVALID_INPUT, 400)
+      );
+    }
+    
+    if (product.status === 'active') {
+      return res.status(400).json(
+        createErrorResponse('Không thể xóa sản phẩm đang hoạt động', ERROR_CODES.INVALID_INPUT, 400)
+      );
+    }
     
     await deleteProduct(product_id);
 

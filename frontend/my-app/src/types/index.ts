@@ -103,6 +103,35 @@ export interface ProductImage {
   created_at: string;
 }
 
+// Order Types
+export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+export type PaymentStatus = 'pending' | 'paid' | 'failed';
+
+export interface Order {
+  order_id: number;
+  product_id: number;
+  buyer_id: string;
+  seller_id: string;
+  product_title: string;
+  final_price: number;
+  status: OrderStatus;
+  payment_status: PaymentStatus;
+  shipping_name?: string;
+  shipping_phone?: string;
+  shipping_address?: string;
+  created_at: string;
+}
+
+export interface OrderPaymentRequest {
+  order_id: number;
+}
+
+export interface OrderShippingUpdate {
+  shipping_name: string;
+  shipping_phone: string;
+  shipping_address: string;
+}
+
 // API Response Types
 export interface ApiResponse<T> {
   status: number;

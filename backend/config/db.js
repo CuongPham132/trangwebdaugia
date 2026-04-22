@@ -9,6 +9,13 @@ const config = {
   options: {
     encrypt: false,
     trustServerCertificate: true,
+    enableArithAbort: true,
+    connectionTimeout: 5000,  // Connection timeout: 5s
+    requestTimeout: 10000,    // Query timeout: 10s
+  },
+  pool: {
+    min: 1,
+    max: 10,
   },
 };
 
@@ -16,10 +23,22 @@ const config = {
 const connectDB = async () => {
   try {
     // Use sql.connect for global connection pool
+    console.log('🔌 Connecting to SQL Server:', {
+      server: config.server,
+      port: config.port,
+      database: config.database,
+      user: config.user,
+    });
+    
     await sql.connect(config);
     console.log('✅ Connected to SQL Server');
+    
+    // Test connection
+    const result = await sql.query`SELECT 1 as test`;
+    console.log('✅ DB test query successful:', result.recordset);
   } catch (err) {
     console.error('❌ DB Connection Error:', err.message);
+    console.error('❌ Full error:', err);
     throw err;
   }
 };

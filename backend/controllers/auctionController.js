@@ -199,6 +199,21 @@ async function completeAuction(req, res) {
               payment_amount: winningBid.bid_amount,
               payment_status: 'completed'
             });
+
+            // ⭐ EMIT SOCKET EVENT: Thông báo user thắng đấu giá
+            if (global.io) {
+              global.io.to(`user-${result.winner.user_id}`).emit('auction:won', {
+                product_id,
+                product_title: product.product_title,
+                final_price: winningBid.bid_amount,
+                winner_id: result.winner.user_id,
+                auction_completed_time: new Date(),
+              });
+              logger.info('auction:won event emitted', {
+                product_id,
+                winner_id: result.winner.user_id
+              });
+            }
           }
         } catch (paymentError) {
           logger.error('Auction payment failed', {

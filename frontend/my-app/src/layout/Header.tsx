@@ -196,8 +196,8 @@ export const Header: React.FC = () => {
           textDecoration: 'none',
         }}
       >
-        <span style={{ fontSize: '28px' }}>🔨</span>
-        AuctionHub
+        <span style={{ fontSize: '28px' }}>�</span>
+        BidVN
       </Link>
 
       {/* Navigation Menu */}

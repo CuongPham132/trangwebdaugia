@@ -12,6 +12,7 @@ interface SectionHeaderProps {
   subtitle: string;
   actionLabel?: string;
   onAction?: () => void;
+  centered?: boolean;
 }
 
 const SectionHeader: React.FC<SectionHeaderProps> = ({
@@ -19,15 +20,18 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   subtitle,
   actionLabel,
   onAction,
+  centered = false,
 }) => {
   return (
     <div
       style={{
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        justifyContent: centered ? 'center' : 'space-between',
+        alignItems: centered ? 'center' : 'center',
+        flexDirection: centered ? 'column' : 'row',
         gap: '16px',
         marginBottom: '20px',
+        textAlign: centered ? 'center' : 'left',
       }}
     >
       <div>
@@ -124,6 +128,7 @@ const HomePage: React.FC = () => {
             <SectionHeader
               title="Danh mục nổi bật"
               subtitle="Khám phá nhanh theo nhóm sản phẩm bạn quan tâm"
+              centered
             />
 
             <Row gutter={[16, 16]}>
@@ -151,6 +156,7 @@ const HomePage: React.FC = () => {
               subtitle="Phiên đang hoạt động với mức cạnh tranh cao"
               actionLabel="Xem tất cả"
               onAction={() => navigate('/marketplace?status=active')}
+              centered
             />
             <ProductGrid
               products={activeProducts.slice(0, 8)}
@@ -167,6 +173,7 @@ const HomePage: React.FC = () => {
               subtitle="Các phiên còn ít thời gian, phù hợp để chốt nhanh"
               actionLabel="Ưu tiên theo thời gian"
               onAction={() => navigate('/marketplace?status=active&sortBy=time-remaining')}
+              centered
             />
             <ProductGrid
               products={endingSoonProducts}
@@ -183,6 +190,7 @@ const HomePage: React.FC = () => {
               subtitle="Theo dõi trước để không bỏ lỡ phiên phù hợp"
               actionLabel="Xem lịch phiên"
               onAction={() => navigate('/marketplace?status=upcoming')}
+              centered
             />
             <ProductGrid
               products={upcomingProducts.slice(0, 8)}

@@ -1,13 +1,4 @@
--- Drop existing database if exists (chạy từ master context)
-USE master;
-GO
 
-IF EXISTS(SELECT * FROM sys.databases WHERE name = 'dau_gia')
-BEGIN
-    ALTER DATABASE dau_gia SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-    DROP DATABASE dau_gia;
-END
-GO
 
 -- Create new database 
 CREATE DATABASE dau_gia; 

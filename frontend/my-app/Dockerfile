@@ -1,22 +1,16 @@
-FROM node:20-bookworm-slim AS build
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
+# 1. Cài đặt thư viện (Giữ lại node_modules trong Docker)
 COPY package*.json ./
 RUN npm install
 
+# 2. Copy code
 COPY . .
 
-ARG VITE_API_URL=http://localhost:3000/api
-ENV VITE_API_URL=${VITE_API_URL}
+# 3. Mở cổng mặc định của Vite
+EXPOSE 5173
 
-RUN npm run build
-
-FROM nginx:1.27-alpine
-
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+# 4. Lệnh khởi chạy thần thánh để sửa code là nhận ngay
+CMD ["npm", "run", "dev", "--", "--host"]

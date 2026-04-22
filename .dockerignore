@@ -1,0 +1,29 @@
+# Chặn Git và tài liệu
+.git
+.gitignore
+README.md
+
+# Chặn Dependencies (Docker sẽ tự chạy npm install bên trong)
+node_modules
+**/node_modules
+
+# Chặn file môi trường (Docker dùng env_file trong compose rồi)
+.env
+.env.*
+backend/.env
+
+# Chặn file rác hệ điều hành
+.DS_Store
+Thumbs.db
+
+# Chặn các file build local
+dist
+build
+**/dist
+**/build
+
+# Chặn chính nó và file cấu hình Docker (không cần thiết bên trong image)
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+.dockerignore

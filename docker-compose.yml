@@ -1,64 +1,71 @@
 services:
+  # 1. Database SQL Server
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: auction-db
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_SA_PASSWORD: "AuctionHub@123456" # Bạn nên để mật khẩu mạnh này
       MSSQL_PID: "Developer"
     ports:
       - "1433:1433"
     volumes:
       - mssql-data:/var/opt/mssql
 
+  # 2. Redis cho Socket.io
+  redis:
+    image: redis:alpine
+    container_name: auction-redis
+    ports:
+      - "6379:6379"
+
+  # 3. Khởi tạo Database (Chạy 4 file SQL)
   db-init:
     image: mcr.microsoft.com/mssql-tools
     container_name: auction-db-init
     depends_on:
       db:
         condition: service_started
+    env_file: ./backend/.env # Lấy DB_NAME, DB_USER, DB_PASSWORD từ đây
     environment:
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
-      DB_NAME: ${DB_NAME:-dau_gia}
+      MSSQL_SA_PASSWORD: "AuctionHub@123456"
     volumes:
-      - ./dau_gia.sql:/scripts/dau_gia.sql:ro
-      - ./docker/init-db.sh:/scripts/init-db.sh:ro
-    entrypoint: ["/bin/bash", "/scripts/init-db.sh"]
-    restart: "no"
-
+      - ./sql-scripts:/scripts:ro
+      - ./docker:/docker-scripts:ro # Mount cả folder docker
+    entrypoint: ["/bin/bash", "/docker-scripts/init-db.sh"]
+  # 4. Backend (Node.js)
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     container_name: auction-backend
     depends_on:
       db-init:
         condition: service_completed_successfully
+      redis:
+        condition: service_started
+    env_file: ./backend/.env
     environment:
-      PORT: 3000
-      NODE_ENV: development
-      JWT_SECRET: ${JWT_SECRET}
-      DB_SERVER: db
-      DB_USER: sa
-      DB_PASSWORD: ${MSSQL_SA_PASSWORD}
-      DB_NAME: ${DB_NAME:-dau_gia}
-      DB_PORT: 1433
+      DB_SERVER: db # Tên service của SQL Server trong Docker
+      REDIS_HOST: redis # Tên service của Redis trong Docker
     ports:
       - "3000:3000"
     volumes:
+      - ./backend:/app # Mắc dây để sửa code máy thật là Docker nhận ngay
+      - /app/node_modules # Giữ node_modules riêng không bị máy thật đè lên
       - ./backend/uploads:/app/uploads
 
+  # 5. Frontend (React + Vite)
   frontend:
-    build:
+    build: 
       context: ./frontend/my-app
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: http://localhost:3000/api
     container_name: auction-frontend
     depends_on:
       - backend
     ports:
-      - "5173:80"
+      - "5173:5173" # Khớp với cổng Vite bạn dùng
+    volumes:
+      - ./frontend/my-app:/app
+      - /app/node_modules
 
 volumes:
   mssql-data:

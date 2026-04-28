@@ -53,6 +53,28 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
   const items: CollapseProps['items'] = [
     {
+      key: 'category',
+      label: <span style={{ fontSize: '16px', fontWeight: 'bold' }}>📦 Danh Mục</span>,
+      children: (
+        <Select
+          placeholder="Chọn danh mục"
+          style={{ width: '100%' }}
+          value={filters.categoryId || undefined}
+          onChange={(value) =>
+            handleFilterChange({ categoryId: value })
+          }
+          allowClear
+          options={[
+            { label: 'Tất Cả Danh Mục', value: undefined },
+            ...categories.map((cat) => ({
+              label: cat.name,
+              value: cat.category_id,
+            })),
+          ]}
+        />
+      ),
+    },
+    {
       key: 'price',
       label: <span style={{ fontSize: '16px', fontWeight: 'bold' }}>💰 Khoảng Giá Thầu</span>,
       children: (
@@ -89,28 +111,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             </div>
           </div>
         </Space>
-      ),
-    },
-    {
-      key: 'category',
-      label: <span style={{ fontSize: '16px', fontWeight: 'bold' }}>📦 Danh Mục</span>,
-      children: (
-        <Select
-          placeholder="Chọn danh mục"
-          style={{ width: '100%' }}
-          value={filters.categoryId || undefined}
-          onChange={(value) =>
-            handleFilterChange({ categoryId: value })
-          }
-          allowClear
-          options={[
-            { label: 'Tất Cả Danh Mục', value: undefined },
-            ...categories.map((cat) => ({
-              label: cat.name,
-              value: cat.category_id,
-            })),
-          ]}
-        />
       ),
     },
     {
@@ -191,35 +191,20 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     >
       <Collapse 
         items={items} 
-        defaultActiveKey={['price', 'category']}
+        defaultActiveKey={['category', 'price']}
         style={{ borderRadius: '6px' }}
       />
 
       <Divider style={{ margin: '16px 0' }} />
 
-      <Space style={{ width: '100%' }} orientation="vertical" size="middle">
-        <Button
-          block
-          icon={<ClearOutlined />}
-          onClick={clearFilters}
-          size="large"
-        >
-          Xóa Bộ Lọc
-        </Button>
-        <Button
-          block
-          type="primary"
-          icon={<CheckOutlined />}
-          onClick={() => onFilterChange(filters)}
-          size="large"
-          style={{
-            background: 'linear-gradient(135deg, #1890ff 0%, #0050b3 100%)',
-            borderColor: 'transparent',
-          }}
-        >
-          Áp Dụng Bộ Lọc
-        </Button>
-      </Space>
+      <Button
+        block
+        icon={<ClearOutlined />}
+        onClick={clearFilters}
+        size="large"
+      >
+        Xóa Bộ Lọc
+      </Button>
     </Card>
   );
 };

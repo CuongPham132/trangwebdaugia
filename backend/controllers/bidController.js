@@ -182,16 +182,39 @@ async function placeBid(req, res) {
 
     // ⭐ EMIT SOCKET EVENT: Broadcast new bid to all users viewing this product
     if (global.io) {
-      global.io.to(`product-${product_id}`).emit('new-bid', {
-        product_id,
-        bid_id: bidResult.bid_id,
-        user_id,
-        bidder_username: req.user?.username || 'Anonymous',
-        bid_amount,
-        bid_time: new Date(),
-        is_winning: bidResult.is_winning,
-      });
-      logger.info('Bid event emitted', { product_id, bid_amount });
+      try {
+        // Re-fetch authoritative product state after DB trigger updates
+        const updatedProduct = await getProductById(product_id);
+        const highest = await getHighestBid(product_id);
+        const authoritativeCurrent = updatedProduct?.current_price ?? (highest ? highest.bid_amount : bid_amount);
+        const authoritativeHighest = highest ? highest.bid_amount : authoritativeCurrent;
+        const minimumRequired = Number(authoritativeCurrent) + Number(updatedProduct?.min_increment || 0);
+
+        const eventPayload = {
+          product_id,
+          bid_id: bidResult.bid_id,
+          user_id,
+          bidder_username: req.user?.username || 'Anonymous',
+          bid_amount,
+          bid_time: new Date(),
+          is_winning: bidResult.is_winning,
+          // authoritative fields to reduce extra client fetches
+          current_price: authoritativeCurrent,
+          highest_bid: authoritativeHighest,
+          minimum_required: minimumRequired,
+        };
+
+        const roomName = `product-${product_id}`;
+        console.log(`📤 [EMIT] Broadcasting event to room: ${roomName}`, eventPayload);
+        global.io.to(roomName).emit('new-bid', eventPayload);
+
+        logger.info('Bid event emitted', { product_id, bid_amount, current_price: authoritativeCurrent, roomName });
+      } catch (emitErr) {
+        console.error(`❌ [EMIT ERROR] Failed to emit bid event:`, emitErr);
+        logger.error('Failed to emit enriched bid event', { error: emitErr.message });
+      }
+    } else {
+      console.warn(`⚠️ [EMIT] global.io is undefined - socket.io not initialized`);
     }
 
     res.status(201).json(

@@ -8,7 +8,11 @@ let socket: Socket | null = null;
  */
 export function connectSocket(): Socket {
   if (!socket) {
-    socket = io(API_BASE_URL, {
+    // Extract base URL without /api suffix
+    const baseURL = API_BASE_URL.replace('/api', '');
+    
+    socket = io(baseURL, {
+      path: '/api/socket.io/',
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
@@ -65,14 +69,24 @@ export function onNewBid(callback: (bid: any) => void): void {
   if (!socket) {
     connectSocket();
   }
-  socket?.on('new-bid', callback);
+  console.log('👂 Registering new-bid listener');
+  socket?.on('new-bid', (data) => {
+    console.log('📨 new-bid listener triggered with data:', data);
+    callback(data);
+  });
 }
 
 /**
- * Stop listening for new bid events
+ * Stop listening for new bid events. If `callback` is provided,
+ * remove that specific listener; otherwise remove all listeners for the event.
  */
-export function offNewBid(): void {
-  socket?.off('new-bid');
+export function offNewBid(callback?: (bid: any) => void): void {
+  if (!socket) return;
+  if (callback) {
+    socket.off('new-bid', callback);
+    return;
+  }
+  socket.off('new-bid');
 }
 
 /**

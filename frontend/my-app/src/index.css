@@ -2,6 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Scrollbar hiding utility */
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+/* Responsive card styles */
+.responsive-card {
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.filter-section-mobile {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .filter-section-mobile {
+    display: none;
+  }
+}
+
+.filter-section-desktop {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .filter-section-desktop {
+    display: block;
+  }
+}
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;

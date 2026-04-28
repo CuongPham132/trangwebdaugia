@@ -15,37 +15,65 @@ interface SectionHeaderProps {
   centered?: boolean;
 }
 
-const SectionHeader: React.FC<SectionHeaderProps> = ({
+const SectionHeader: React.FC<SectionHeaderProps & { isDark?: boolean }> = ({
   title,
   subtitle,
   actionLabel,
   onAction,
   centered = false,
-}) => {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: centered ? 'center' : 'space-between',
-        alignItems: centered ? 'center' : 'center',
-        flexDirection: centered ? 'column' : 'row',
-        gap: '16px',
-        marginBottom: '20px',
-        textAlign: centered ? 'center' : 'left',
-      }}
-    >
-      <div>
-        <h2 style={{ fontSize: '28px', fontWeight: 800, color: '#172554', margin: 0 }}>{title}</h2>
-        <p style={{ color: '#475569', margin: '6px 0 0' }}>{subtitle}</p>
-      </div>
-      {actionLabel && onAction ? (
-        <Button type="primary" onClick={onAction} icon={<ArrowRightOutlined />} style={{ fontWeight: 600 }}>
-          {actionLabel}
-        </Button>
-      ) : null}
-    </div>
-  );
-};
+  isDark = false,
+}) => (
+  <div style={{ 
+    marginBottom: '48px', // Tăng khoảng cách để giao diện "thở"
+    textAlign: centered ? 'center' : 'left',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: centered ? 'center' : 'flex-start'
+  }}>
+    <h2 style={{ 
+      fontSize: '32px', 
+      fontWeight: 850, 
+      color: isDark ? '#fff' : '#0f172a', 
+      margin: 0,
+      letterSpacing: '-1px' 
+    }}>
+      {title}
+    </h2>
+    {/* Thanh gạch chân trang trí tạo sự đồng bộ */}
+    <div style={{ 
+      width: '40px', 
+      height: '4px', 
+      background: '#3b82f6', 
+      marginTop: '12px',
+      borderRadius: '2px' 
+    }} />
+    <p style={{ 
+      color: isDark ? '#94a3b8' : '#64748b', 
+      fontSize: '16px', 
+      marginTop: '16px',
+      maxWidth: '600px'
+    }}>
+      {subtitle}
+    </p>
+    {actionLabel && (
+      <Button 
+        type="link" 
+        onClick={onAction} 
+        style={{ 
+          padding: 0, 
+          marginTop: '8px', 
+          fontWeight: 600, 
+          color: isDark ? '#38bdf8' : '#2563eb',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px'
+        }}
+      >
+        {actionLabel} <ArrowRightOutlined style={{ fontSize: '12px' }} />
+      </Button>
+    )}
+  </div>
+);
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -63,50 +91,28 @@ const HomePage: React.FC = () => {
   return (
     <Layout>
       <div style={{ width: '100%', background: '#f8fafc' }}>
-        <section
-          style={{
-            background: 'linear-gradient(120deg, #0f172a 0%, #1d4ed8 55%, #38bdf8 100%)',
-            color: 'white',
-            padding: '64px 16px',
-          }}
-        >
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <Tag color="gold" style={{ borderRadius: '999px', padding: '4px 12px', marginBottom: '18px' }}>
-              Nền tảng đấu giá minh bạch
+        <section style={{ 
+          background: 'radial-gradient(circle at top right, #1d4ed8, #0f172a)', 
+          padding: '100px 16px', 
+          color: 'white',
+          textAlign: 'center' 
+        }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <Tag color="#f97316" style={{ borderRadius: '20px', padding: '4px 15px', marginBottom: '24px', border: 'none', fontWeight: 600 }}>
+              LIVE AUCTION PLATFORM
             </Tag>
-            <h1 style={{ margin: 0, fontSize: 'clamp(30px, 5vw, 52px)', lineHeight: 1.1, fontWeight: 800 }}>
-              Đấu giá nhanh, công khai,
-              <br />
-              chốt giao dịch trong vài phút
+            <h1 style={{ fontSize: 'clamp(40px, 6vw, 68px)', fontWeight: 900, lineHeight: 1, marginBottom: '24px', letterSpacing: '-2px' }}>
+              Săn đồ độc, chốt <span style={{ color: '#38bdf8' }}>giá hời</span>
             </h1>
-            <p style={{ fontSize: '18px', opacity: 0.92, maxWidth: '700px', margin: '18px 0 28px' }}>
-              Săn sản phẩm hot mỗi ngày, theo dõi giá real-time và tham gia phiên đấu giá chỉ với một chạm.
+            <p style={{ fontSize: '20px', opacity: 0.8, marginBottom: '40px', fontWeight: 400 }}>
+              Hệ thống đấu giá thời gian thực minh bạch và tin cậy nhất.
             </p>
-            <Space size="middle" wrap>
-              <Button
-                type="primary"
-                size="large"
-                icon={<ThunderboltOutlined />}
-                onClick={() => navigate('/marketplace?status=active')}
-                style={{
-                  background: '#f97316',
-                  borderColor: '#f97316',
-                  fontWeight: 700,
-                }}
-              >
-                Tham gia ngay
+            <Space size="large">
+              <Button type="primary" size="large" icon={<ThunderboltOutlined />} style={{ height: '56px', borderRadius: '12px', padding: '0 32px', background: '#f97316', border: 'none', fontWeight: 700 }}>
+                Bắt đầu ngay
               </Button>
-              <Button
-                size="large"
-                onClick={() => navigate('/seller-dashboard')}
-                style={{
-                  borderColor: 'rgba(255,255,255,0.45)',
-                  color: '#0f172a',
-                  background: '#f8fafc',
-                  fontWeight: 700,
-                }}
-              >
-                Đăng bán sản phẩm
+              <Button size="large" ghost style={{ height: '56px', borderRadius: '12px', padding: '0 32px', fontWeight: 600 }}>
+                Cách thức hoạt động
               </Button>
             </Space>
           </div>
@@ -122,64 +128,107 @@ const HomePage: React.FC = () => {
             />
           </div>
         )}
-
-        <section style={{ padding: '32px 16px', background: '#f8fafc' }}>
+        {/* --- Section Danh mục nổi bật --- */}
+        <section style={{ padding: '40px 16px', background: '#fff', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <SectionHeader
-              title="Danh mục nổi bật"
-              subtitle="Khám phá nhanh theo nhóm sản phẩm bạn quan tâm"
-              centered
-            />
+            <div style={{ 
+              display: 'flex', 
+              overflowX: 'auto', 
+              paddingBottom: '8px', 
+              gap: '12px',
+              scrollbarWidth: 'none', // Ẩn scrollbar trên Firefox
+              msOverflowStyle: 'none'  // Ẩn scrollbar trên IE/Edge
+            }} 
+            className="hide-scrollbar" // Thêm CSS để ẩn thanh cuộn trên Chrome/Safari
+            >
+              {/* Nút "Tất cả" luôn đứng đầu */}
+              <Button 
+                shape="round" 
+                size="large" 
+                type="primary"
+                onClick={() => navigate('/marketplace')}
+                style={{ background: '#0f172a', border: 'none', px: '24px' }}
+              >
+                Tất cả danh mục
+              </Button>
 
-            <Row gutter={[16, 16]}>
-              {categories.slice(0, 8).map((category) => (
-                <Col key={category.categoryId} xs={12} md={8} lg={6}>
-                  <Card
-                    hoverable
-                    onClick={() => navigate(`/marketplace?category=${category.categoryId}`)}
-                    style={{ borderRadius: '14px', border: '1px solid #dbeafe' }}
-                  >
-                    <div>
-                      <p style={{ margin: 0, color: '#0f172a', fontWeight: 700 }}>{category.name}</p>
-                    </div>
-                  </Card>
-                </Col>
+              {categories.map((category) => (
+                <Button 
+                  key={category.categoryId}
+                  shape="round" 
+                  size="large"
+                  onClick={() => navigate(`/marketplace?category=${category.categoryId}`)}
+                  style={{ 
+                    background: '#f1f5f9', 
+                    border: 'none', 
+                    color: '#475569',
+                    fontWeight: 600,
+                    padding: '0 24px'
+                  }}
+                  className="category-pill"
+                >
+                  {category.name}
+                </Button>
               ))}
-            </Row>
+            </div>
           </div>
         </section>
-
-        <section style={{ background: 'white', borderTop: '1px solid #e2e8f0', padding: '48px 16px', minHeight: '600px' }}>
+        {/* --- Sản phẩm đang đấu giá --- */}
+        <section style={{ 
+          background: 'white', 
+          padding: '80px 16px', // Thống nhất padding với các section khác
+          position: 'relative'
+        }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <SectionHeader
               title="Sản phẩm đang đấu giá"
-              subtitle="Phiên đang hoạt động với mức cạnh tranh cao"
-              actionLabel="Xem tất cả"
+              subtitle="Tham gia ngay các phiên đấu giá trực tiếp với mức giá hấp dẫn nhất"
+              actionLabel="Khám phá toàn bộ sàn"
               onAction={() => navigate('/marketplace?status=active')}
-              centered
+              centered={true} // Giữ centered nếu bạn muốn nó là trung tâm
             />
-            <ProductGrid
-              products={activeProducts.slice(0, 8)}
-              loading={loading}
-              onViewDetail={(productId) => navigate(`/product/${productId}`)}
-            />
+            
+            {/* Layout Grid đồng bộ */}
+            <div style={{ marginTop: '20px' }}>
+              <ProductGrid
+                products={activeProducts.slice(0, 8)}
+                loading={loading}
+                onViewDetail={(productId) => navigate(`/product/${productId}`)}
+              />
+            </div>
           </div>
         </section>
 
-        <section style={{ background: '#fef7ed', borderTop: '1px solid #fed7aa', padding: '48px 16px', minHeight: '600px' }}>
+        {/* --- Section Sắp kết thúc (Highlight) --- */}
+        <section style={{ 
+          background: '#0f172a', // Nền xanh đen sâu (rất sang)
+          padding: '80px 16px', 
+          borderTop: '1px solid #1e293b' 
+        }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            {/* SectionHeader bây giờ sẽ tự căn giữa và đổi màu chữ sang trắng */}
             <SectionHeader
-              title="Sắp kết thúc"
+              title="🔥 Sắp kết thúc"
               subtitle="Các phiên còn ít thời gian, phù hợp để chốt nhanh"
-              actionLabel="Ưu tiên theo thời gian"
+              actionLabel="Xem tất cả ưu tiên thời gian"
               onAction={() => navigate('/marketplace?status=active&sortBy=time-remaining')}
-              centered
+              centered={true}
+              isDark={true}
             />
-            <ProductGrid
-              products={endingSoonProducts}
-              loading={loading}
-              onViewDetail={(productId) => navigate(`/product/${productId}`)}
-            />
+
+            {/* Bọc ProductGrid trong một lớp nền nhẹ để các Card nổi lên */}
+            <div style={{ 
+              background: 'rgba(255, 255, 255, 0.02)', 
+              padding: '32px', 
+              borderRadius: '24px',
+              border: '1px solid rgba(255, 255, 255, 0.05)'
+            }}>
+              <ProductGrid
+                products={endingSoonProducts}
+                loading={loading}
+                onViewDetail={(productId) => navigate(`/product/${productId}`)}
+              />
+            </div>
           </div>
         </section>
 

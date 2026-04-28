@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Alert, Button, Card, Col, Row, Space, Tag, message } from 'antd';
-import { ClockCircleOutlined, FireOutlined, ScheduleOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Col, Row, Space, Tag, message, Drawer } from 'antd';
+import { ClockCircleOutlined, FireOutlined, ScheduleOutlined, FilterOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { SearchBar } from '../components/SearchBar';
 import type { FilterOptions } from '../components/FilterBar';
@@ -13,6 +13,7 @@ import { Layout } from '../layout';
 import type { Category } from '../types';
 import { useMarketplaceData } from '../hooks/useMarketplaceData';
 import { bidAPI, productAPI } from '../services/api';
+import { connectSocket, joinProductRoom, leaveProductRoom } from '../services/socketService';
 import { normalizeBidsResponse, normalizeProductResponse } from '../utils/safeData';
 import { getAuctionStatusLabel } from '../constants/status';
 
@@ -99,6 +100,7 @@ export const MarketplacePage: React.FC = () => {
   const [filters, setFilters] = useState<FilterOptions>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [isUrlHydrated, setIsUrlHydrated] = useState(false);
+  const [mobileFilterDrawerOpen, setMobileFilterDrawerOpen] = useState(false);
   const { products, categories: categoryData, loading, error, retry } = useMarketplaceData(selectedCategoryId);
 
   const categories: Category[] = categoryData.map((cat) => ({
@@ -417,6 +419,45 @@ export const MarketplacePage: React.FC = () => {
   const shouldShowUpcomingSection = loading || upcomingProducts.length > 0;
   const shouldShowFallbackSection = fallbackProducts.length > 0;
 
+  // Keep track of which product rooms we've joined for real-time updates
+  const joinedRoomsRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    // Ensure socket connected
+    connectSocket();
+
+    const currentIds = new Set(filteredProducts.map((p) => p.product_id));
+    const prevIds = joinedRoomsRef.current;
+
+    console.log(`🎯 [MarketplacePage] Visible products: ${currentIds.size}, Joined rooms: ${prevIds.size}`);
+
+    // Join newly visible product rooms
+    currentIds.forEach((id) => {
+      if (!prevIds.has(id)) {
+        console.log(`  📌 Joining room: product-${id}`);
+        joinProductRoom(id);
+        prevIds.add(id);
+      }
+    });
+
+    // Leave rooms that are no longer visible
+    Array.from(prevIds).forEach((id) => {
+      if (!currentIds.has(id)) {
+        console.log(`  📴 Leaving room: product-${id}`);
+        leaveProductRoom(id);
+        prevIds.delete(id);
+      }
+    });
+
+    // Cleanup when component unmounts
+    return () => {
+      Array.from(joinedRoomsRef.current).forEach((id) => {
+        leaveProductRoom(id);
+      });
+      joinedRoomsRef.current.clear();
+    };
+  }, [filteredProducts]);
+
   return (
     <Layout>
       <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
@@ -535,12 +576,27 @@ export const MarketplacePage: React.FC = () => {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-1">
+            {/* Desktop Sidebar Filter - visible lg+ only */}
+            <div className="hidden lg:block lg:col-span-1">
               <FilterBar
                 categories={categories}
                 onFilterChange={setFilters}
                 value={filters}
               />
+            </div>
+
+            {/* Mobile Filter Button - visible below lg */}
+            <div className="lg:hidden mb-4">
+              <Button
+                block
+                type="primary"
+                icon={<FilterOutlined />}
+                onClick={() => setMobileFilterDrawerOpen(true)}
+                size="large"
+                style={{ borderRadius: '8px' }}
+              >
+                Bộ Lọc ({Object.values(filters).filter(v => v !== undefined && v !== '').length})
+              </Button>
             </div>
 
             <div className="lg:col-span-3 space-y-8">
@@ -639,6 +695,25 @@ export const MarketplacePage: React.FC = () => {
             onSubmit={handleBidSubmit}
           />
         )}
+
+        {/* Mobile Filter Drawer */}
+        <Drawer
+          title="Bộ Lọc Sản Phẩm"
+          placement="bottom"
+          onClose={() => setMobileFilterDrawerOpen(false)}
+          open={mobileFilterDrawerOpen}
+          height="auto"
+          styles={{ body: { paddingBottom: '60px' } }}
+        >
+          <FilterBar
+            categories={categories}
+            onFilterChange={(newFilters) => {
+              setFilters(newFilters);
+              setMobileFilterDrawerOpen(false);
+            }}
+            value={filters}
+          />
+        </Drawer>
       </div>
     </Layout>
   );

@@ -100,6 +100,7 @@ const server = http.createServer(app);
 
 // ⭐ Initialize Socket.io with Redis adapter (for multi-server scalability)
 const io = new Server(server, {
+  path: '/api/socket.io/',
   cors: {
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
     methods: ['GET', 'POST'],
@@ -139,22 +140,27 @@ if (process.env.REDIS_HOST) {
 
 // ⭐ Socket.io connection handlers
 io.on('connection', (socket) => {
-  logger.info('Socket connected', { socket_id: socket.id });
+  logger.info('✅ Socket connected', { socket_id: socket.id });
 
   // Join room for specific product
   socket.on('join-product', (productId) => {
-    socket.join(`product-${productId}`);
-    logger.info('User joined product room', { socket_id: socket.id, productId });
+    const roomName = `product-${productId}`;
+    socket.join(roomName);
+    console.log(`📌 [JOIN] Socket ${socket.id} joined room: ${roomName}`);
+    logger.info('User joined product room', { socket_id: socket.id, productId, roomName });
   });
 
   // Leave room
   socket.on('leave-product', (productId) => {
-    socket.leave(`product-${productId}`);
-    logger.info('User left product room', { socket_id: socket.id, productId });
+    const roomName = `product-${productId}`;
+    socket.leave(roomName);
+    console.log(`📴 [LEAVE] Socket ${socket.id} left room: ${roomName}`);
+    logger.info('User left product room', { socket_id: socket.id, productId, roomName });
   });
 
   // Disconnect
   socket.on('disconnect', () => {
+    console.log(`❌ [DISCONNECT] Socket ${socket.id} disconnected`);
     logger.info('Socket disconnected', { socket_id: socket.id });
   });
 });

@@ -34,45 +34,35 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <motion.form
+    <form
       style={{ width: '100%' }}
       onSubmit={handleSearch}
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
     >
       <div style={{ position: 'relative', display: 'flex', gap: '8px' }}>
         <Input
           type="text"
-          placeholder="🔍 Tìm kiếm sản phẩm..."
+          placeholder="🔍 Tìm kiếm theo tên hoặc mô tả sản phẩm..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           prefix={<SearchOutlined />}
           size="large"
           style={{
-            borderRadius: '20px',
+            borderRadius: '8px',
             flex: 1,
           }}
         />
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+        <Button
+          type="primary"
+          htmlType="submit"
+          size="large"
+          style={{
+            borderRadius: '8px',
+            minWidth: '100px',
+          }}
         >
-          <Button
-            type="primary"
-            htmlType="submit"
-            size="large"
-            style={{
-              background: 'linear-gradient(135deg, #ff7a45 0%, #d9534f 100%)',
-              borderColor: 'transparent',
-              fontWeight: 'bold',
-              borderRadius: '20px',
-              minWidth: '100px',
-            }}
-          >
-            Tìm kiếm
-          </Button>
-        </motion.div>
+          Tìm kiếm
+        </Button>
       </div>
-    </motion.form>
+    </form>
   );
 };

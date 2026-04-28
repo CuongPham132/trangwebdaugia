@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { bidAPI } from '../services/api';
 import { connectSocket, joinProductRoom, leaveProductRoom, onNewBid, offNewBid } from '../services/socketService';
@@ -18,6 +18,24 @@ export const BidHistory: React.FC<BidHistoryProps> = ({ productId }) => {
   const [bids, setBids] = useState<BidHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ⭐ Memoize handler to keep same reference for cleanup
+  const handleNewBid = useCallback((newBid: any) => {
+    console.log('📝 New bid received in BidHistory:', newBid);
+    setBids((prevBids) => {
+      // Add new bid to the beginning of the list
+      const updatedBids = [
+        {
+          bid_id: newBid.bid_id,
+          bidder_username: newBid.bidder_username,
+          bid_amount: newBid.bid_amount,
+          bid_time: newBid.bid_time,
+        },
+        ...prevBids,
+      ];
+      return updatedBids;
+    });
+  }, []);
 
   useEffect(() => {
     const fetchBidHistory = async () => {
@@ -52,31 +70,14 @@ export const BidHistory: React.FC<BidHistoryProps> = ({ productId }) => {
     joinProductRoom(productId);
 
     // ⭐ Listen for new bids
-    const handleNewBid = (newBid: any) => {
-      console.log('📝 New bid received:', newBid);
-      setBids((prevBids) => {
-        // Add new bid to the beginning of the list
-        const updatedBids = [
-          {
-            bid_id: newBid.bid_id,
-            bidder_username: newBid.bidder_username,
-            bid_amount: newBid.bid_amount,
-            bid_time: newBid.bid_time,
-          },
-          ...prevBids,
-        ];
-        return updatedBids;
-      });
-    };
-
     onNewBid(handleNewBid);
 
     // Cleanup
     return () => {
       leaveProductRoom(productId);
-      offNewBid();
+      offNewBid(handleNewBid);
     };
-  }, [productId]);
+  }, [productId, handleNewBid]);
 
   if (loading) {
     return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
@@ -30,6 +30,7 @@ import { CountdownTimer } from '../components/CountdownTimer';
 import { BidPriceTable } from '../components/BidPriceTable';
 import type { Product, Bid } from '../types';
 import { productAPI, bidAPI } from '../services/api';
+import { connectSocket, joinProductRoom, leaveProductRoom } from '../services/socketService';
 import {
   getAuctionInactiveMessage,
   getAuctionStatusBadgeText,
@@ -93,6 +94,20 @@ export const ProductDetailPage: React.FC = () => {
   const [isBidModalOpen, setIsBidModalOpen] = useState(false);
   const [bidAmount, setBidAmount] = useState<number | null>(null);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string>('');
+
+  // ⭐ Setup socket for real-time bid updates
+  useEffect(() => {
+    if (resolvedProductId <= 0) return;
+
+    console.log(`🔌 [ProductDetail] Joining product room: product-${resolvedProductId}`);
+    connectSocket();
+    joinProductRoom(resolvedProductId);
+
+    return () => {
+      console.log(`🔌 [ProductDetail] Leaving product room: product-${resolvedProductId}`);
+      leaveProductRoom(resolvedProductId);
+    };
+  }, [resolvedProductId]);
 
   const productQuery = useQuery({
     queryKey: ['product-detail', resolvedProductId],

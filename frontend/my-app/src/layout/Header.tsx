@@ -1,6 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Menu, Button, Dropdown, Input, Space, Badge, Avatar, Card, Spin, Tooltip } from 'antd';
-import { SearchOutlined, LoginOutlined, UserOutlined, LogoutOutlined, ShoppingOutlined, BellOutlined, HomeOutlined, DashboardOutlined, WalletOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { Button, Dropdown, Space, Badge, Avatar, Card, Spin, Tooltip } from 'antd';
+import { LoginOutlined, UserOutlined, LogoutOutlined, BellOutlined, DashboardOutlined, WalletOutlined, DownOutlined, MoreOutlined } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
+import { categoryAPI } from '../services/api';
+import { normalizeCategoriesResponse } from '../utils/safeData';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearNotifications as clearAllNotifications } from '../utils/notifications';
@@ -16,21 +19,53 @@ export const Header: React.FC = () => {
   const { isAuthenticated, user } = useSelector(
     (state: RootState) => state.auth
   );
-  const [searchValue, setSearchValue] = useState('');
   const [notifications, setNotifications] = useState<Array<{id: string; message: string; type: 'success' | 'info' | 'warning'; timestamp: number}>>([]);
   const [wallet, setWallet] = useState<{wallet_id: number; balance: number; locked_balance: number} | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
 
+  // Responsive helper: hide some elements on narrow viewports
+  const [isNarrow, setIsNarrow] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
+  const [isCompactNav, setIsCompactNav] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth < 1500 : false);
+  useEffect(() => {
+    const onResize = () => {
+      setIsNarrow(window.innerWidth < 1024);
+      setIsCompactNav(window.innerWidth < 1500);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   // Determine active menu key from current location
-  const activeMenuKey = useMemo(() => {
-    const path = location.pathname;
-    if (path === '/') return '/';
-    if (path.startsWith('/marketplace')) return '/marketplace';
-    if (path.startsWith('/seller')) return '/seller';
-    if (path.startsWith('/wallet')) return '/wallet';
-    if (path.startsWith('/orders')) return '/orders';
-    return '/';
-  }, [location.pathname]);
+  // Fetch categories for the header dropdown (uses server-side categories)
+  const { data: headerCategories = [] } = useQuery({
+    queryKey: ['header-categories'],
+    queryFn: async () => {
+      const res = await categoryAPI.getAll();
+      return normalizeCategoriesResponse(res.data);
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const categoriesMenuItems = headerCategories.map((cat) => ({
+    key: String(cat.category_id),
+    label: (
+      <Link to={`/marketplace?category=${cat.category_id}`}>{cat.name}</Link>
+    ),
+  }));
+
+  const auctionMenuItems = [
+    { key: 'upcoming', label: <Link to="/marketplace?status=upcoming">Phiên đấu giá sắp đấu giá</Link> },
+    { key: 'active', label: <Link to="/marketplace?status=active">Phiên đấu giá đang diễn ra</Link> },
+    { key: 'ended', label: <Link to="/marketplace?status=ended">Phiên đấu giá đã kết thúc</Link> },
+  ];
+
+  const overflowMenuItems = [
+    { key: 'marketplace', label: <Link to="/marketplace">Danh mục đấu giá</Link> },
+    { key: 'orders', label: <Link to="/orders">Đơn của tôi</Link> },
+    { key: 'seller', label: <Link to="/seller-dashboard">Đăng bán</Link> },
+    ...(isAuthenticated ? [{ key: 'wallet', label: <Link to="/wallet">Ví</Link> }] : []),
+  ];
 
   // Load notifications from localStorage on mount
   React.useEffect(() => {
@@ -98,38 +133,6 @@ export const Header: React.FC = () => {
     return user?.role === 'admin';
   }, [user]);
 
-  const menuItems: MenuProps['items'] = [
-    {
-      key: '/',
-      icon: <HomeOutlined />,
-      label: <Link to="/">Trang chủ</Link>,
-    },
-    {
-      key: '/marketplace',
-      icon: <ShoppingOutlined />,
-      label: <Link to="/marketplace">Duyệt đấu giá</Link>,
-    },
-    ...(isAuthenticated ? [
-      {
-        key: '/orders',
-        icon: <ShoppingCartOutlined />,
-        label: <Link to="/orders">Đơn hàng</Link>,
-      },
-    ] : []),
-    {
-      key: '/seller',
-      icon: <ShoppingOutlined />,
-      label: <Link to="/seller-dashboard">Đăng bán</Link>,
-    },
-    ...(isAuthenticated ? [
-      {
-        key: '/wallet',
-        icon: <WalletOutlined />,
-        label: <Link to="/wallet">Ví</Link>,
-      },
-    ] : []),
-  ];
-
   const userMenuItems: MenuProps['items'] = [
     {
       key: 'profile',
@@ -160,211 +163,211 @@ export const Header: React.FC = () => {
     },
   ];
 
-  const handleSearch = () => {
-    if (searchValue.trim()) {
-      navigate(`/marketplace?search=${encodeURIComponent(searchValue)}`);
-    }
-  };
-
   return (
     <header
       style={{
         backgroundColor: '#fff',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
-        padding: '0 24px',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+        padding: '0',
         position: 'sticky',
         top: 0,
         zIndex: 999,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '24px',
-        height: '64px',
+        minHeight: '64px',
       }}
     >
-      {/* Logo */}
-      <Link
-        to="/"
-        style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
-          color: '#1890ff',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          minWidth: '180px',
-          textDecoration: 'none',
-        }}
-      >
-        <span style={{ fontSize: '28px' }}>�</span>
-        BidVN
-      </Link>
+      <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: 0, padding: '0 12px' }}>
+        <Link
+          to="/"
+          style={{
+            fontSize: '22px',
+            fontWeight: 'bold',
+            color: '#d32f2f',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            minWidth: 'auto',
+            textDecoration: 'none',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: '26px' }}>🔨</span>
+          <span>BidVN</span>
+        </Link>
 
-      {/* Navigation Menu */}
-      <Menu
-        mode="horizontal"
-        items={menuItems}
-        style={{
-          border: 'none',
-          flex: 1,
-          backgroundColor: 'transparent',
-        }}
-        selectedKeys={[activeMenuKey]}
-        theme="light"
-      />
+        <nav style={{ display: 'flex', alignItems: 'center', gap: '18px', flex: 1, minWidth: 0, marginLeft: '24px', whiteSpace: 'nowrap' }}>
+          <Dropdown menu={{ items: categoriesMenuItems }} placement="bottomLeft">
+            <Button type="text" style={{ padding: '6px 0' }}>
+              Tài sản đấu giá <DownOutlined />
+            </Button>
+          </Dropdown>
 
-      {/* Wallet Display - Thay cho Search Bar */}
-      {isAuthenticated && user ? (
-        <Tooltip title="Quản lý ví">
-          <Link
-            to="/wallet"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '10px 16px',
-              backgroundColor: '#f0f5ff',
-              borderRadius: '8px',
-              border: '1px solid #d9e8ff',
-              cursor: 'pointer',
-              textDecoration: 'none',
-              transition: 'all 0.3s',
-              minHeight: '40px',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = '#e6f7ff';
-              (e.currentTarget as HTMLElement).style.borderColor = '#91d5ff';
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(24, 144, 255, 0.15)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = '#f0f5ff';
-              (e.currentTarget as HTMLElement).style.borderColor = '#d9e8ff';
-              (e.currentTarget as HTMLElement).style.boxShadow = 'none';
-            }}
-          >
-            <WalletOutlined style={{ fontSize: '18px', color: '#1890ff', flexShrink: 0 }} />
-            {walletLoading ? (
-              <Spin size="small" />
-            ) : wallet ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ fontSize: '12px', color: '#666', whiteSpace: 'nowrap' }}>Số dư:</span>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: '#1890ff', whiteSpace: 'nowrap' }}>
-                  {wallet.balance.toLocaleString('vi-VN')}₫
-                </span>
-              </div>
-            ) : (
-              <span style={{ fontSize: '12px', color: '#666' }}>Ví</span>
-            )}
-          </Link>
-        </Tooltip>
-      ) : (
-        // Search bar for non-authenticated users
-        <div style={{ width: '280px' }}>
-          <Input
-            placeholder="Tìm kiếm sản phẩm..."
-            prefix={<SearchOutlined />}
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            onPressEnter={handleSearch}
-            style={{ borderRadius: '20px', paddingRight: '12px' }}
-          />
-        </div>
-      )}
+          <Dropdown menu={{ items: auctionMenuItems }} placement="bottomLeft">
+            <Button type="text" style={{ padding: '6px 0' }}>
+              Phiên đấu giá <DownOutlined />
+            </Button>
+          </Dropdown>
 
-      {/* Right Section */}
-      <Space size="large">
-        {isAuthenticated && user ? (
-          <>
-            {/* Notifications Dropdown */}
-            <Dropdown 
-              menu={{
-                items: [
-                  ...notifications.map((notif) => ({
-                    key: notif.id,
-                    label: (
-                      <div style={{ maxWidth: '300px', padding: '8px 0' }}>
-                        <div style={{ fontSize: '13px' }}>{notif.message}</div>
-                        <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
-                          {new Date(notif.timestamp).toLocaleTimeString('vi-VN')}
+          {!isCompactNav ? (
+            <>
+              <Link to="/marketplace" style={{ color: '#262626', textDecoration: 'none' }}>Danh mục đấu giá</Link>
+              <Link to="/orders" style={{ color: '#262626', textDecoration: 'none' }}>Đơn của tôi</Link>
+              <Link to="/seller-dashboard" style={{ color: '#262626', textDecoration: 'none' }}>Đăng bán</Link>
+              {!isNarrow && (
+                <Link to="/wallet" style={{ color: '#262626', textDecoration: 'none' }}>Ví</Link>
+              )}
+            </>
+          ) : (
+            <Dropdown
+              menu={{ items: overflowMenuItems }}
+              placement="bottomLeft"
+              trigger={['click']}
+            >
+              <Button type="text" style={{ padding: '6px 0', color: '#262626' }} icon={<MoreOutlined />}>
+                Thêm
+              </Button>
+            </Dropdown>
+          )}
+        </nav>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+          {isAuthenticated && user ? (
+            <Tooltip title="Quản lý ví">
+              <Link
+                to="/wallet"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '8px 14px',
+                  backgroundColor: '#fff3e0',
+                  borderRadius: '6px',
+                  border: '1px solid #ffe0b2',
+                  cursor: 'pointer',
+                  textDecoration: 'none',
+                  transition: 'all 0.3s',
+                  minWidth: 'auto',
+                  flexShrink: 0,
+                  display: isNarrow ? 'none' : 'flex',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = '#ffe8cc';
+                  (e.currentTarget as HTMLElement).style.borderColor = '#ffcc99';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = '#fff3e0';
+                  (e.currentTarget as HTMLElement).style.borderColor = '#ffe0b2';
+                }}
+              >
+                <WalletOutlined style={{ fontSize: '16px', color: '#f57c00', flexShrink: 0 }} />
+                {walletLoading ? (
+                  <Spin size="small" />
+                ) : wallet ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '11px', color: '#666', whiteSpace: 'nowrap' }}>Số dư:</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#f57c00', whiteSpace: 'nowrap' }}>
+                      {wallet.balance.toLocaleString('vi-VN')}₫
+                    </span>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: '12px', color: '#666' }}>Ví</span>
+                )}
+              </Link>
+            </Tooltip>
+          ) : null}
+
+          {isAuthenticated && user ? (
+            <Space size="middle">
+              <Dropdown
+                menu={{
+                  items: [
+                    ...notifications.map((notif) => ({
+                      key: notif.id,
+                      label: (
+                        <div style={{ maxWidth: '300px', padding: '8px 0' }}>
+                          <div style={{ fontSize: '13px' }}>{notif.message}</div>
+                          <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+                            {new Date(notif.timestamp).toLocaleTimeString('vi-VN')}
+                          </div>
                         </div>
-                      </div>
-                    ),
-                  })),
-                  ...(notifications.length > 0 ? [
-                    { type: 'divider' as const },
-                    {
-                      key: 'clear-all',
-                      label: 'Xóa tất cả',
-                      onClick: () => {
-                        clearAllNotifications();
-                        setNotifications([]);
+                      ),
+                    })),
+                    ...(notifications.length > 0 ? [
+                      { type: 'divider' as const },
+                      {
+                        key: 'clear-all',
+                        label: 'Xóa tất cả',
+                        onClick: () => {
+                          clearAllNotifications();
+                          setNotifications([]);
+                        },
                       },
-                    },
-                  ] : [
-                    {
-                      key: 'no-notif',
-                      label: 'Chưa có thông báo',
-                      disabled: true,
-                    },
-                  ]),
-                ],
-              }}
-              placement="bottomRight"
-            >
-              <Badge count={notifications.length} offset={[-5, 5]}>
-                <BellOutlined
-                  style={{
-                    fontSize: '20px',
-                    cursor: 'pointer',
-                    color: '#666',
-                    transition: 'all 0.3s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = '#1890ff';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = '#666';
-                  }}
-                />
-              </Badge>
-            </Dropdown>
+                    ] : [
+                      {
+                        key: 'no-notif',
+                        label: 'Chưa có thông báo',
+                        disabled: true,
+                      },
+                    ]),
+                  ],
+                }}
+                placement="bottomRight"
+              >
+                <Badge count={notifications.length} offset={[-5, 5]}>
+                  <BellOutlined
+                    style={{
+                      fontSize: '18px',
+                      cursor: 'pointer',
+                      color: '#666',
+                      transition: 'all 0.3s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#d32f2f';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#666';
+                    }}
+                  />
+                </Badge>
+              </Dropdown>
 
-            {/* User Dropdown */}
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <Space style={{ cursor: 'pointer' }}>
-                <Avatar
-                  size={40}
-                  icon={<UserOutlined />}
-                  style={{
-                    backgroundColor: '#1890ff',
-                    cursor: 'pointer',
-                    fontSize: '20px',
-                  }}
-                />
-                <span style={{ color: '#262626', fontWeight: 500 }}>{user.username}</span>
-              </Space>
-            </Dropdown>
-          </>
-        ) : (
-          <>
-            <Button
-              type="text"
-              icon={<LoginOutlined />}
-              onClick={() => navigate('/login')}
-              style={{ fontSize: '16px' }}
-            >
-              Đăng nhập
-            </Button>
-            <Button
-              type="primary"
-              icon={<UserOutlined />}
-              onClick={() => navigate('/register')}
-            >
-              Đăng ký
-            </Button>
-          </>
-        )}
-      </Space>
+              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                <Space style={{ cursor: 'pointer', gap: '8px' }}>
+                  <Avatar
+                    size={36}
+                    icon={<UserOutlined />}
+                    style={{
+                      backgroundColor: '#d32f2f',
+                      cursor: 'pointer',
+                      fontSize: '18px',
+                    }}
+                  />
+                  <span style={{ color: '#262626', fontWeight: 500, fontSize: '13px' }}>{user.username}</span>
+                </Space>
+              </Dropdown>
+            </Space>
+          ) : (
+            <Space size="small" style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              <Button
+                type="text"
+                icon={<LoginOutlined />}
+                onClick={() => navigate('/login')}
+                style={{ fontSize: '14px', color: '#666' }}
+              >
+                Đăng nhập
+              </Button>
+              <Button
+                type="primary"
+                onClick={() => navigate('/register')}
+                style={{ backgroundColor: '#d32f2f', borderColor: '#d32f2f', fontSize: '14px' }}
+              >
+                Đăng ký
+              </Button>
+            </Space>
+          )}
+        </div>
+      </div>
     </header>
   );
 };

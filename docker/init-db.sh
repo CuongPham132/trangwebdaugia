@@ -30,7 +30,6 @@ echo "Creating User and Database..."
 IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '$DB_NAME') CREATE DATABASE [$DB_NAME];
 IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = '$DB_USER') 
     CREATE LOGIN [$DB_USER] WITH PASSWORD = '$DB_PASSWORD';
-GO
 USE [$DB_NAME];
 IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = '$DB_USER')
     CREATE USER [$DB_USER] FOR LOGIN [$DB_USER];

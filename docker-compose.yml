@@ -5,7 +5,7 @@ services:
     container_name: auction-db
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "AuctionHub@123456" # Bạn nên để mật khẩu mạnh này
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-AuctionHub@123456}
       MSSQL_PID: "Developer"
     ports:
       - "1433:1433"
@@ -28,7 +28,7 @@ services:
         condition: service_started
     env_file: ./backend/.env # Lấy DB_NAME, DB_USER, DB_PASSWORD từ đây
     environment:
-      MSSQL_SA_PASSWORD: "AuctionHub@123456"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-AuctionHub@123456}
     volumes:
       - ./sql-scripts:/scripts:ro
       - ./docker:/docker-scripts:ro # Mount cả folder docker
